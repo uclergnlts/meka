@@ -1,0 +1,33 @@
+{
+  "name": "meka-platform",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w frontend\" \"npm run dev -w backend\"",
+    "dev:sites": "vinext dev",
+    "dev:frontend": "npm run dev -w frontend",
+    "dev:backend": "npm run dev -w backend",
+    "build": "npm run build -w frontend",
+    "build:sites": "vinext build",
+    "start:backend": "npm run start -w backend",
+    "db:up": "docker compose up -d postgres",
+    "db:generate": "npm run db:generate -w backend",
+    "db:push": "npm run db:push -w backend",
+    "db:seed": "npm run db:seed -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitejs/plugin-rsc": "^0.5.28",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "vinext": "^1.0.0-beta.2",
+    "vite": "^8.1.5"
+  }
+}

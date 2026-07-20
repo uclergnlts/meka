@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Product {
+  id            String   @id
+  name          String
+  category      String
+  brand         String
+  price         Int
+  stock         Int
+  minStock      Int
+  tag           String
+  image         String
+  compatibility String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("products")
+}
+
+model Customer {
+  id         String   @id
+  name       String
+  phone      String
+  motorcycle String
+  lastAction String
+  date       String
+  status     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("customers")
+}
+
+model Invoice {
+  id          String   @id
+  customer    String
+  description String
+  amount      Int
+  status      String
+  date        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("invoices")
+}
+
+model ServiceJob {
+  id         String   @id
+  motorcycle String
+  operation  String
+  schedule   String
+  status     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("service_jobs")
+}
+
+model BalanceLine {
+  id        String   @id
+  label     String
+  amount    Int
+  type      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("balance_lines")
+}
