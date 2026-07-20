@@ -11,7 +11,7 @@
     "dev:sites": "vinext dev",
     "dev:frontend": "npm run dev -w frontend",
     "dev:backend": "npm run dev -w backend",
-    "build": "vinext build && cp dist/server/entry.js dist/server/index.js && mkdir -p dist/.openai && cp .openai/hosting.json dist/.openai/hosting.json",
+    "build": "vinext build && node scripts/prepare-sites-dist.mjs",
     "build:frontend": "npm run build -w frontend",
     "build:sites": "vinext build",
     "start:backend": "npm run start -w backend",
@@ -21,7 +21,8 @@
     "db:seed": "npm run db:seed -w backend"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "esbuild": "^0.28.1"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.3",
@@ -30,5 +31,6 @@
     "react-dom": "^19.2.7",
     "vinext": "^1.0.0-beta.2",
     "vite": "^8.1.5"
-  }
+  },
+  "type": "module"
 }
