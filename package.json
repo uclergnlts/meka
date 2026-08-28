@@ -11,7 +11,7 @@
     "dev:sites": "vinext dev",
     "dev:frontend": "npm run dev -w frontend",
     "dev:backend": "npm run dev -w backend",
-    "build": "vinext build && node scripts/prepare-sites-dist.mjs",
+    "build": "npm run build:frontend && node scripts/prepare-sites-dist.mjs",
     "build:frontend": "npm run build -w frontend",
     "build:sites": "vinext build",
     "start:backend": "npm run start -w backend",
