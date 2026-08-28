@@ -1,31 +1,47 @@
 import { useState } from "react";
 import { Bike, Menu, X } from "lucide-react";
+import { business } from "../../data/business.js";
 
-export function Header({ currentView, setView }) {
+const navItems = [
+  ["home", "Ana sayfa"],
+  ["products", "Ürünler"],
+  ["who", "Biz kimiz?"],
+  ["about", "Hakkımızda"],
+  ["contact", "İletişim"],
+];
+
+export function Header({ currentView, setView, publicPage, setPublicPage }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navigateSite = () => {
+  const navigateSite = (page = "home") => {
     setView("site");
+    setPublicPage(page);
     setMobileOpen(false);
   };
 
   return (
     <header className="topbar">
-      <a className="brand" href="#anasayfa" aria-label="MEKA Motor" onClick={navigateSite}>
+      <button className="brand brand-button" type="button" aria-label={business.brand} onClick={() => navigateSite("home")}>
         <span className="brand-mark">
           <Bike size={22} />
         </span>
         <span>
-          <strong>MEKA Motor</strong>
-          <small>Servis & Parça</small>
+          <strong>MEKA</strong>
+          <small>Moto Garage</small>
         </span>
-      </a>
+      </button>
 
       <nav className={mobileOpen ? "nav nav-open" : "nav"}>
-        <a href="#urunler" onClick={navigateSite}>Ürünler</a>
-        <a href="#biz-kimiz" onClick={navigateSite}>Biz kimiz?</a>
-        <a href="#hakkimizda" onClick={navigateSite}>Hakkımızda</a>
-        <a href="#iletisim" onClick={navigateSite}>İletişim</a>
+        {navItems.map(([id, label]) => (
+          <button
+            className={currentView === "site" && publicPage === id ? "active" : ""}
+            type="button"
+            key={id}
+            onClick={() => navigateSite(id)}
+          >
+            {label}
+          </button>
+        ))}
         <button
           className="ghost-btn"
           type="button"

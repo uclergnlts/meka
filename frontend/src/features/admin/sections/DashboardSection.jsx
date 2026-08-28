@@ -1,3 +1,4 @@
+import { AlertTriangle, Boxes, ClipboardList, ReceiptText, Users, Wrench } from "lucide-react";
 import { DataTable } from "../../../components/ui/DataTable.jsx";
 import { MetricCard } from "../../../components/ui/MetricCard.jsx";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
@@ -39,6 +40,14 @@ export function DashboardSection() {
         <MetricCard label="Gider" value={formatCurrency(metrics.expenses)} trend="-4%" />
         <MetricCard label="Net bilanço" value={formatCurrency(metrics.netBalance)} trend="+22%" />
         <MetricCard label="Açık servis" value={metrics.openServices} trend="5 bugün" />
+      </div>
+      <div className="dashboard-action-grid">
+        <a href="#panel-stock"><AlertTriangle size={20} /> Kritik stokları gör</a>
+        <a href="#panel-service"><Wrench size={20} /> Servis akışını aç</a>
+        <a href="#panel-products"><Boxes size={20} /> Ürünleri yönet</a>
+        <a href="#panel-invoices"><ReceiptText size={20} /> Faturaları kontrol et</a>
+        <a href="#panel-customers"><Users size={20} /> Müşteri kartları</a>
+        <a href="#about"><ClipboardList size={20} /> İşletme yaklaşımı</a>
       </div>
       <div className="panel-grid">
         <DataTable

@@ -31,19 +31,38 @@ export function InvoicesSection() {
   const [editingId, setEditingId] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [showReport, setShowReport] = useState(false);
 
   const filteredInvoices = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
+    const statusFiltered = statusFilter === "all"
+      ? invoiceList
+      : invoiceList.filter((invoice) => invoice.status === statusFilter);
 
     if (!normalizedQuery) {
-      return invoiceList;
+      return statusFiltered;
     }
 
-    return invoiceList.filter((invoice) => [invoice.id, invoice.customer, invoice.description, invoice.status]
+    return statusFiltered.filter((invoice) => [invoice.id, invoice.customer, invoice.description, invoice.status]
       .join(" ")
       .toLocaleLowerCase("tr-TR")
       .includes(normalizedQuery));
-  }, [invoiceList, query]);
+  }, [invoiceList, query, statusFilter]);
+
+  const liveSummary = useMemo(() => {
+    const total = invoiceList.reduce((sum, invoice) => sum + Number(invoice.amount || 0), 0);
+    const paid = invoiceList.filter((invoice) => invoice.status === "Ödendi").reduce((sum, invoice) => sum + Number(invoice.amount || 0), 0);
+    const pending = invoiceList.filter((invoice) => invoice.status !== "Ödendi").reduce((sum, invoice) => sum + Number(invoice.amount || 0), 0);
+    const draft = invoiceList.filter((invoice) => invoice.status === "Taslak").length;
+
+    return {
+      total,
+      paid,
+      pending,
+      draft,
+    };
+  }, [invoiceList]);
 
   const updateField = (field, value) => {
     setForm((current) => ({
@@ -125,6 +144,11 @@ export function InvoicesSection() {
           <Search size={17} />
           <input type="search" placeholder="Fatura, müşteri veya açıklama ara" value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
+        <div className="segmented-control" aria-label="Fatura durumu">
+          <button className={statusFilter === "all" ? "active" : ""} type="button" onClick={() => setStatusFilter("all")}>Tümü</button>
+          <button className={statusFilter === "Bekliyor" ? "active" : ""} type="button" onClick={() => setStatusFilter("Bekliyor")}>Bekleyen</button>
+          <button className={statusFilter === "Ödendi" ? "active" : ""} type="button" onClick={() => setStatusFilter("Ödendi")}>Ödendi</button>
+        </div>
         <button className="primary-btn compact" type="button" onClick={resetForm}>
           <Plus size={18} /> Fatura oluştur
         </button>
@@ -169,8 +193,18 @@ export function InvoicesSection() {
         </button>
       </form>
       <div className="quick-actions">
-        <button type="button"><Download size={18} /> Aylık rapor indir</button>
+        <button type="button" onClick={() => setShowReport((current) => !current)}><Download size={18} /> Aylık rapor özeti</button>
       </div>
+      {showReport ? (
+        <div className="report-panel">
+          <span>Aylık fatura özeti</span>
+          <strong>{formatCurrency(liveSummary.total)}</strong>
+          <p>
+            Tahsil edilen {formatCurrency(liveSummary.paid)}, bekleyen/taslak toplam {formatCurrency(liveSummary.pending)}.
+            Kontrol bekleyen taslak sayısı: {liveSummary.draft}.
+          </p>
+        </div>
+      ) : null}
       <DataTable
         title="Fatura listesi"
         columns={["No", "Müşteri", "Açıklama", "Tutar", "Durum", "Tarih", "İşlem"]}

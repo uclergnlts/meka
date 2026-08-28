@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { BarChart3, Boxes, PackageCheck, ReceiptText, Users, Wrench } from "lucide-react";
 import { AdminSidebar } from "./components/AdminSidebar.jsx";
 import { DashboardSection } from "./sections/DashboardSection.jsx";
@@ -17,8 +17,7 @@ export const adminSections = [
   { id: "customers", label: "Müşteri", icon: Users },
 ];
 
-export function AdminPanel() {
-  const [activeSection, setActiveSection] = useState("dashboard");
+export function AdminPanel({ activeSection, setActiveSection }) {
   const ActiveComponent = useMemo(() => {
     const sections = {
       dashboard: DashboardSection,

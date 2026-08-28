@@ -23,19 +23,30 @@ export function CustomersSection() {
   const [editingId, setEditingId] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [showCallList, setShowCallList] = useState(false);
 
   const filteredCustomers = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
+    const statusFiltered = statusFilter === "all"
+      ? customerList
+      : customerList.filter((customer) => customer.status === statusFilter);
 
     if (!normalizedQuery) {
-      return customerList;
+      return statusFiltered;
     }
 
-    return customerList.filter((customer) => [customer.name, customer.phone, customer.motorcycle, customer.lastAction, customer.status]
+    return statusFiltered.filter((customer) => [customer.name, customer.phone, customer.motorcycle, customer.lastAction, customer.status]
       .join(" ")
       .toLocaleLowerCase("tr-TR")
       .includes(normalizedQuery));
-  }, [customerList, query]);
+  }, [customerList, query, statusFilter]);
+
+  const callList = useMemo(() => customerList.filter((customer) => [
+    "Aktif servis",
+    "Teklif bekliyor",
+    "Randevu alındı",
+  ].includes(customer.status)), [customerList]);
 
   const updateField = (field, value) => {
     setForm((current) => ({
@@ -108,6 +119,11 @@ export function CustomersSection() {
           <Search size={17} />
           <input type="search" placeholder="Müşteri, telefon veya motosiklet ara" value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
+        <div className="segmented-control" aria-label="Müşteri durumu">
+          <button className={statusFilter === "all" ? "active" : ""} type="button" onClick={() => setStatusFilter("all")}>Tümü</button>
+          <button className={statusFilter === "Aktif servis" ? "active" : ""} type="button" onClick={() => setStatusFilter("Aktif servis")}>Servis</button>
+          <button className={statusFilter === "Teklif bekliyor" ? "active" : ""} type="button" onClick={() => setStatusFilter("Teklif bekliyor")}>Teklif</button>
+        </div>
         <button className="primary-btn compact" type="button" onClick={resetForm}><UserPlus size={18} /> Müşteri ekle</button>
       </div>
       <form className="admin-form" onSubmit={saveCustomer}>
@@ -155,8 +171,19 @@ export function CustomersSection() {
         </button>
       </form>
       <div className="quick-actions">
-        <button type="button"><PhoneCall size={18} /> Aranacaklar listesi</button>
+        <button type="button" onClick={() => setShowCallList((current) => !current)}><PhoneCall size={18} /> Aranacaklar listesi</button>
       </div>
+      {showCallList ? (
+        <div className="call-list-panel">
+          {callList.map((customer) => (
+            <a href={`tel:${customer.phone.replaceAll(" ", "")}`} key={customer.id}>
+              <span>{customer.name}</span>
+              <strong>{customer.phone}</strong>
+              <small>{customer.status} · {customer.motorcycle}</small>
+            </a>
+          ))}
+        </div>
+      ) : null}
       <DataTable
         title="Müşteri kartları"
         columns={["Müşteri", "Telefon", "Motosiklet", "Son işlem", "Tarih", "Durum", "İşlem"]}
