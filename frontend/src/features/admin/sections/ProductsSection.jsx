@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
+import { Image, Pencil, Plus, Save, Search, Trash2, Upload, X } from "lucide-react";
 import { DataTable } from "../../../components/ui/DataTable.jsx";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
 import { ResourceNotice } from "../../../components/ui/ResourceNotice.jsx";
@@ -7,6 +7,7 @@ import { products } from "../../../data/catalog.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { api } from "../../../services/apiClient.js";
 import { formatCurrency } from "../../../utils/formatters.js";
+import { getProductImages, readProductImage, saveProductImage } from "../../../utils/productImages.js";
 
 const emptyProductForm = {
   name: "",
@@ -27,6 +28,7 @@ export function ProductsSection() {
   const [editingId, setEditingId] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [productImage, setProductImage] = useState(null);
 
   const filteredProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
@@ -45,6 +47,7 @@ export function ProductsSection() {
     setEditingId(null);
     setForm(emptyProductForm);
     setActionError(null);
+    setProductImage(null);
   };
 
   const updateField = (field, value) => {
@@ -68,6 +71,17 @@ export function ProductsSection() {
       image: product.image,
       compatibility: product.compatibility,
     });
+    setProductImage(getProductImages()[product.id] ?? null);
+  };
+
+  const selectProductImage = async (file) => {
+    if (!file) return;
+    try {
+      setProductImage(await readProductImage(file));
+      setActionError(null);
+    } catch (imageError) {
+      setActionError(imageError.message);
+    }
   };
 
   const saveProduct = async (event) => {
@@ -79,9 +93,11 @@ export function ProductsSection() {
       if (editingId) {
         const updatedProduct = await api.products.update(editingId, form);
         setProductList((current) => current.map((product) => product.id === editingId ? updatedProduct : product));
+        saveProductImage(editingId, productImage);
       } else {
         const createdProduct = await api.products.create(form);
         setProductList((current) => [createdProduct, ...current]);
+        saveProductImage(createdProduct.id, productImage);
       }
 
       resetForm();
@@ -94,6 +110,8 @@ export function ProductsSection() {
   };
 
   const deleteProduct = async (productId) => {
+    const product = productList.find((item) => item.id === productId);
+    if (!window.confirm(`“${product?.name ?? productId}” ürününü silmek istediğinizden emin misiniz?`)) return;
     setActionError(null);
 
     try {
@@ -166,6 +184,10 @@ export function ProductsSection() {
             Uyumluluk
             <input value={form.compatibility} onChange={(event) => updateField("compatibility", event.target.value)} />
           </label>
+        </div>
+        <div className="product-image-editor">
+          <div className="product-image-preview">{productImage ? <img src={productImage} alt="Ürün görseli önizlemesi" /> : <Image size={32} />}</div>
+          <div><strong>Ürün görseli</strong><p>PNG, JPG veya WebP; en fazla 1 MB.</p><label className="outline-btn upload-button"><Upload size={17} /> Görsel seç<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => selectProductImage(event.target.files?.[0])} /></label>{productImage ? <button className="text-danger-button" type="button" onClick={() => setProductImage(null)}>Görseli kaldır</button> : null}</div>
         </div>
         <button className="primary-btn compact" type="submit" disabled={isSaving}>
           <Save size={18} /> {isSaving ? "Kaydediliyor" : "Kaydet"}

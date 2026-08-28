@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarPlus, ClipboardCheck, Save, Search } from "lucide-react";
+import { CalendarPlus, ClipboardCheck, Download, Pencil, Save, Search, Trash2, X } from "lucide-react";
 import { DataTable } from "../../../components/ui/DataTable.jsx";
 import { MetricCard } from "../../../components/ui/MetricCard.jsx";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
@@ -9,10 +9,17 @@ import { useApiResource } from "../../../hooks/useApiResource.js";
 import { api } from "../../../services/apiClient.js";
 
 const emptyServiceForm = {
+  customer: "",
+  phone: "",
   motorcycle: "",
+  plate: "",
+  mileage: "",
   operation: "",
-  schedule: "Bugün",
+  schedule: new Date().toISOString().slice(0, 10),
   status: "Planlandı",
+  parts: "",
+  labor: "",
+  notes: "",
 };
 
 export function ServiceSection() {
@@ -23,11 +30,21 @@ export function ServiceSection() {
     readyForDelivery: 4,
     averageDuration: "2.1 gün",
   };
-  const { data: jobs, setData: setJobs, error: jobsError, isLoading: jobsLoading } = useApiResource(api.service.jobs, fallbackJobs);
+  const [jobs, setJobsState] = useState(() => {
+    try { return JSON.parse(window.localStorage.getItem("meka-service-jobs")) ?? fallbackJobs; } catch { return fallbackJobs; }
+  });
   const { data: summary, error: summaryError, isLoading: summaryLoading } = useApiResource(api.service.summary, fallbackSummary);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [form, setForm] = useState(emptyServiceForm);
+  const [editingId, setEditingId] = useState(null);
+  const [calendarMode, setCalendarMode] = useState("week");
+
+  const setJobs = (updater) => setJobsState((current) => {
+    const next = typeof updater === "function" ? updater(current) : updater;
+    window.localStorage.setItem("meka-service-jobs", JSON.stringify(next));
+    return next;
+  });
 
   const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
   const filteredJobs = useMemo(() => jobs
@@ -56,10 +73,21 @@ export function ServiceSection() {
 
   const resetForm = () => {
     setForm(emptyServiceForm);
+    setEditingId(null);
+  };
+
+  const startEdit = (job) => {
+    setEditingId(job.id);
+    setForm({ ...emptyServiceForm, ...job });
   };
 
   const saveJob = (event) => {
     event.preventDefault();
+    if (editingId) {
+      setJobs((current) => current.map((job) => job.id === editingId ? { ...job, ...form } : job));
+      resetForm();
+      return;
+    }
     const numericIds = jobs
       .map((job) => Number(String(job.id).replace(/\D/g, "")))
       .filter(Number.isFinite);
@@ -75,10 +103,31 @@ export function ServiceSection() {
     resetForm();
   };
 
+  const deleteJob = (job) => {
+    if (!window.confirm(`“${job.id}” iş emrini silmek istediğinizden emin misiniz?`)) return;
+    setJobs((current) => current.filter((item) => item.id !== job.id));
+    if (editingId === job.id) resetForm();
+  };
+
+  const printJob = (job) => {
+    const safe = (value) => String(value ?? "-").replace(/[<>&]/g, (char) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[char]);
+    const popup = window.open("", "_blank", "width=850,height=700");
+    if (!popup) return;
+    popup.document.write(`<html><head><title>${safe(job.id)} Servis Formu</title><style>body{font-family:Arial;padding:40px;color:#151515}h1{border-bottom:3px solid #d60000;padding-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.box{border:1px solid #ddd;padding:12px}.wide{grid-column:1/-1}@media print{button{display:none}}</style></head><body><h1>MEKA Moto Garage · Servis İş Emri</h1><div class="grid"><div class="box"><b>No:</b> ${safe(job.id)}</div><div class="box"><b>Tarih:</b> ${safe(job.schedule)}</div><div class="box"><b>Müşteri:</b> ${safe(job.customer)}</div><div class="box"><b>Telefon:</b> ${safe(job.phone)}</div><div class="box"><b>Motosiklet:</b> ${safe(job.motorcycle)}</div><div class="box"><b>Plaka / Km:</b> ${safe(job.plate)} · ${safe(job.mileage)}</div><div class="box wide"><b>İşlem:</b> ${safe(job.operation)}</div><div class="box wide"><b>Kullanılan parçalar:</b> ${safe(job.parts)}</div><div class="box"><b>İşçilik:</b> ${safe(job.labor)}</div><div class="box"><b>Durum:</b> ${safe(job.status)}</div><div class="box wide"><b>Notlar:</b> ${safe(job.notes)}</div></div><p><br> Müşteri imzası: ____________________</p><button onclick="window.print()">Yazdır</button></body></html>`);
+    popup.document.close();
+  };
+
+  const downloadCsv = () => {
+    const rows = [["İş emri", "Motosiklet", "İşlem", "Plan", "Durum"], ...filteredJobs.map((job) => [job.id, job.motorcycle, job.operation, job.schedule, job.status])];
+    const csv = `\uFEFF${rows.map((row) => row.map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`).join(";")).join("\n")}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a"); link.href = url; link.download = "meka-servis-is-emirleri.csv"; link.click(); URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <PageHeading title="Servis takibi" description="Randevu, atölye durumu ve parça bekleyen işlemleri yönetin." chip="Bugün" />
-      <ResourceNotice isLoading={jobsLoading || summaryLoading} error={jobsError || summaryError} />
+      <ResourceNotice isLoading={summaryLoading} error={summaryError} />
       <div className="metric-grid service-metrics">
         <MetricCard label="Bugünkü randevu" value={summary.todayAppointments} trend={`${plannedJobs} planlı`} />
         <MetricCard label="Parça bekleyen" value={waitingParts || summary.waitingParts} trend="Stokla eşleşecek" />
@@ -98,9 +147,12 @@ export function ServiceSection() {
       </div>
       <form className="admin-form" onSubmit={saveJob}>
         <div className="form-heading">
-          <h3>Yeni randevu / iş emri</h3>
+          <h3>{editingId ? `${editingId} iş emrini düzenle` : "Yeni randevu / iş emri"}</h3>
+          {editingId ? <button type="button" className="icon-action" onClick={resetForm} aria-label="Düzenlemeyi kapat"><X size={18} /></button> : null}
         </div>
         <div className="form-grid">
+          <label>Müşteri<input value={form.customer} onChange={(event) => updateField("customer", event.target.value)} required /></label>
+          <label>Telefon<input value={form.phone} onChange={(event) => updateField("phone", event.target.value)} required /></label>
           <label>
             Motosiklet
             <input value={form.motorcycle} onChange={(event) => updateField("motorcycle", event.target.value)} placeholder="Yamaha MT-07" required />
@@ -109,10 +161,15 @@ export function ServiceSection() {
             İşlem
             <input value={form.operation} onChange={(event) => updateField("operation", event.target.value)} placeholder="Yağ + filtre" required />
           </label>
+          <label>Plaka<input value={form.plate} onChange={(event) => updateField("plate", event.target.value)} /></label>
+          <label>Kilometre<input type="number" min="0" value={form.mileage} onChange={(event) => updateField("mileage", event.target.value)} /></label>
           <label>
             Plan
-            <input value={form.schedule} onChange={(event) => updateField("schedule", event.target.value)} required />
+            <input type="date" value={form.schedule} onChange={(event) => updateField("schedule", event.target.value)} required />
           </label>
+          <label>Kullanılan parçalar<input value={form.parts} onChange={(event) => updateField("parts", event.target.value)} placeholder="Parça ve adet" /></label>
+          <label>İşçilik tutarı<input type="number" min="0" value={form.labor} onChange={(event) => updateField("labor", event.target.value)} /></label>
+          <label className="form-span-2">Teknisyen notları<textarea value={form.notes} onChange={(event) => updateField("notes", event.target.value)} /></label>
           <label>
             Durum
             <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
@@ -131,11 +188,13 @@ export function ServiceSection() {
       <div className="quick-actions">
         <button type="button" onClick={() => updateField("status", "Planlandı")}><CalendarPlus size={18} /> Randevu ekle</button>
         <button type="button" onClick={() => updateField("status", "Serviste")}><ClipboardCheck size={18} /> İş emri oluştur</button>
+        <button type="button" onClick={downloadCsv}><Download size={18} /> Servis CSV</button>
       </div>
+      <div className="calendar-panel"><div className="form-heading"><h3>Servis takvimi</h3><div className="segmented-control"><button className={calendarMode === "day" ? "active" : ""} type="button" onClick={() => setCalendarMode("day")}>Gün</button><button className={calendarMode === "week" ? "active" : ""} type="button" onClick={() => setCalendarMode("week")}>Hafta</button><button className={calendarMode === "month" ? "active" : ""} type="button" onClick={() => setCalendarMode("month")}>Ay</button></div></div><div className={`service-calendar ${calendarMode}`}>{[...jobs].sort((a,b) => String(a.schedule).localeCompare(String(b.schedule))).slice(0, calendarMode === "day" ? 4 : calendarMode === "week" ? 10 : 31).map((job) => <button type="button" onClick={() => startEdit(job)} key={`cal-${job.id}`}><strong>{job.schedule}</strong><span>{job.motorcycle}</span><small>{job.status}</small></button>)}</div></div>
       <DataTable
         title="Servis iş emirleri"
-        columns={["No", "Motosiklet", "İşlem", "Plan", "Durum"]}
-        rows={filteredJobs.map((job) => [job.id, job.motorcycle, job.operation, job.schedule, job.status])}
+        columns={["No", "Müşteri", "Motosiklet", "İşlem", "Plan", "Durum", "İşlem"]}
+        rows={filteredJobs.map((job) => ({ id: job.id, cells: [job.id, job.customer || "-", job.motorcycle, job.operation, job.schedule, job.status, <div className="row-actions"><button type="button" onClick={() => printJob(job)} aria-label={`${job.id} yazdır`}><ClipboardCheck size={16} /></button><button type="button" onClick={() => startEdit(job)} aria-label={`${job.id} düzenle`}><Pencil size={16} /></button><button type="button" onClick={() => deleteJob(job)} aria-label={`${job.id} sil`}><Trash2 size={16} /></button></div>] }))}
       />
     </>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Boxes,
   CalendarClock,
@@ -11,6 +11,8 @@ import {
   Instagram,
   Mail,
   MapPin,
+  MessageCircle,
+  Navigation,
   PackageCheck,
   Phone,
   Search,
@@ -24,16 +26,25 @@ import {
 import { business } from "../../data/business.js";
 import { categories, products } from "../../data/catalog.js";
 import { formatCurrency } from "../../utils/formatters.js";
+import { getProductImages, PRODUCT_IMAGES_EVENT } from "../../utils/productImages.js";
 
-export function PublicSite({ page, setPage, setView }) {
+export function PublicSite({ page, setPage }) {
   return (
-    <main>
-      {page === "home" && <HomePage setPage={setPage} />}
-      {page === "products" && <ProductsPage />}
-      {page === "who" && <WhoPage />}
-      {page === "about" && <AboutPage />}
-      {page === "contact" && <ContactPage setView={setView} />}
-    </main>
+    <>
+      <main>
+        {page === "home" && <HomePage setPage={setPage} />}
+        {page === "products" && <ProductsPage />}
+        {(page === "who" || page === "about") && <AboutPage />}
+        {page === "contact" && <ContactPage />}
+        {page === "faq" && <FaqPage />}
+        {page === "kvkk" && <LegalPage type="kvkk" />}
+        {page === "privacy" && <LegalPage type="privacy" />}
+      </main>
+      <a className="floating-whatsapp" href={business.whatsappHref} target="_blank" rel="noreferrer" aria-label="WhatsApp üzerinden iletişime geç">
+        <MessageCircle size={23} />
+      </a>
+      <SiteFooter setPage={setPage} />
+    </>
   );
 }
 
@@ -150,9 +161,17 @@ function HomePage({ setPage }) {
 
 function ProductsPage() {
   const [activeCategory, setActiveCategory] = useState("Tümü");
-  const visibleProducts = activeCategory === "Tümü"
+  const [query, setQuery] = useState("");
+  const categoryProducts = activeCategory === "Tümü"
     ? products
     : products.filter((product) => product.category === activeCategory);
+  const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
+  const visibleProducts = normalizedQuery
+    ? categoryProducts.filter((product) => [product.name, product.brand, product.category, product.compatibility, product.tag]
+      .join(" ")
+      .toLocaleLowerCase("tr-TR")
+      .includes(normalizedQuery))
+    : categoryProducts;
 
   return (
     <>
@@ -178,10 +197,17 @@ function ProductsPage() {
             <span className="eyebrow dark">Kategoriler</span>
             <h2>Yedek parça ve aksesuar vitrini</h2>
           </div>
-          <div className="search-pill">
+          <label className="product-search">
             <Search size={17} />
-            <span>{visibleProducts.length} ürün listeleniyor</span>
-          </div>
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Ürün, marka veya model ara"
+              aria-label="Ürün ara"
+            />
+            <small>{visibleProducts.length} sonuç</small>
+          </label>
         </div>
         <div className="category-tabs" aria-label="Ürün kategorileri">
           {categories.map((category) => (
@@ -247,12 +273,13 @@ function AboutPage() {
     <>
       <section className="about-hero page-section" id="hakkimizda">
         <div>
-          <span className="eyebrow">Hakkımızda</span>
+          <span className="eyebrow">Biz kimiz? · Hakkımızda</span>
           <h2>Serviste titiz, parçada net, müşteride takipçiyiz.</h2>
           <p>
-            {business.brand}; motosiklet bakım, arıza tespiti, yedek parça tedariği ve aksesuar
-            danışmanlığını tek çatı altında sunar. Amaç; sürücünün motorunu, yapılan işlemi ve
-            ihtiyaç duyduğu parçayı açık şekilde takip edebilmesidir.
+            {business.owner} yönetimindeki {business.brand}; Simav'da motosiklet bakım, arıza
+            tespiti, yedek parça tedariği ve aksesuar danışmanlığını tek çatı altında sunar.
+            Amacımız; sürücünün motorunu, yapılan işlemi ve ihtiyaç duyduğu parçayı açık şekilde
+            takip edebilmesidir.
           </p>
         </div>
       </section>
@@ -296,7 +323,122 @@ function AboutPage() {
   );
 }
 
-function ContactPage({ setView }) {
+const faqItems = [
+  ["Servis için randevu almam gerekiyor mu?", "Yoğunluğu beklemeden öğrenmek için gelmeden önce telefon veya Instagram üzerinden iletişime geçmenizi öneririz."],
+  ["Hangi motosiklet markalarına hizmet veriyorsunuz?", "Model ve işlem uygunluğu değişebildiği için motosikletinizin marka, model ve yıl bilgisini paylaşarak teyit alabilirsiniz."],
+  ["Yedek parça siparişi verebilir miyim?", "Evet. Parça kodu veya motosiklet bilgisi üzerinden uyumluluk ve tedarik durumu kontrol edildikten sonra bilgi verilir."],
+  ["Sitedeki fiyat ve stok bilgileri kesin mi?", "Fiyat ve stok bilgileri bilgilendirme amaçlıdır. Güncel durum ve ürün uyumluluğu siparişten önce işletme tarafından teyit edilir."],
+  ["Servis işlemi ne kadar sürer?", "Süre; yapılacak işlem, parça durumu ve mevcut servis yoğunluğuna göre değişir. İlk kontrol sonrasında tahmini süre paylaşılır."],
+  ["Ödeme seçenekleri nelerdir?", "Güncel ödeme seçeneklerini işlem veya ürün alımı öncesinde doğrudan işletmeden öğrenebilirsiniz."],
+];
+
+function FaqPage() {
+  return (
+    <section className="legal-page page-section faq-page">
+      <span className="eyebrow">Yardım</span>
+      <h1>Sıkça sorulan sorular</h1>
+      <p className="legal-lead">Servis, ürün ve parça süreçleriyle ilgili en sık sorulan soruların kısa yanıtları.</p>
+      <div className="faq-list">
+        {faqItems.map(([question, answer]) => (
+          <details key={question}>
+            <summary>{question}</summary>
+            <p>{answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LegalPage({ type }) {
+  const isKvkk = type === "kvkk";
+  return (
+    <section className="legal-page page-section">
+      <span className="eyebrow">Yasal bilgilendirme</span>
+      <h1>{isKvkk ? "KVKK Aydınlatma Metni" : "Gizlilik Politikası"}</h1>
+      <p className="legal-lead">Son güncelleme: 28 Ağustos 2026</p>
+      {isKvkk ? (
+        <div className="legal-copy">
+          <h2>Veri sorumlusu</h2>
+          <p>6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında kişisel verileriniz, {business.brand} adına {business.owner} tarafından veri sorumlusu sıfatıyla işlenebilir.</p>
+          <h2>İşlenen veriler ve amaçlar</h2>
+          <p>Telefon, e-posta veya Instagram üzerinden bizimle iletişim kurmanız hâlinde paylaştığınız kimlik, iletişim, motosiklet ve talep bilgileri; talebinizi yanıtlamak, servis veya ürün sürecini planlamak, kayıtları yürütmek ve yasal yükümlülükleri yerine getirmek amacıyla işlenebilir.</p>
+          <h2>Toplama yöntemi ve hukuki sebep</h2>
+          <p>Veriler elektronik veya sözlü iletişim kanalları üzerinden elde edilir; sözleşmenin kurulması veya ifası, hukuki yükümlülük, meşru menfaat ve gerektiğinde açık rıza hukuki sebeplerine dayanılarak işlenir.</p>
+          <h2>Aktarım ve saklama</h2>
+          <p>Veriler yalnızca hizmetin yürütülmesi veya yasal zorunluluk hâlinde yetkili kurumlar, hizmet sağlayıcılar ve iş ortaklarıyla amaçla sınırlı olarak paylaşılabilir; ilgili mevzuatta öngörülen veya işleme amacı için gerekli süre boyunca saklanır.</p>
+          <h2>Haklarınız</h2>
+          <p>Kanunun 11. maddesi kapsamındaki bilgi alma, düzeltme, silme veya yok etme ve işleme faaliyetlerine itiraz haklarınıza ilişkin taleplerinizi kimliğinizi doğrulamaya elverişli bilgilerle <a href={business.emailHref}>{business.email}</a> adresine veya işletme adresine iletebilirsiniz.</p>
+        </div>
+      ) : (
+        <div className="legal-copy">
+          <h2>Site kullanımı</h2>
+          <p>Bu internet sitesi ürün ve hizmetler hakkında bilgi vermek ve işletmenin iletişim kanallarına ulaşmanızı sağlamak amacıyla sunulur.</p>
+          <h2>Toplanan bilgiler</h2>
+          <p>Site üzerinde üyelik, çevrim içi ödeme veya doğrudan mesaj formu bulunmaz. Telefon, e-posta ya da Instagram bağlantılarını kullanmanız hâlinde bilgileriniz ilgili kanalın koşulları ve KVKK Aydınlatma Metnimiz kapsamında değerlendirilir.</p>
+          <h2>Teknik veriler ve dış bağlantılar</h2>
+          <p>Barındırma ve güvenlik hizmetleri; IP adresi, tarayıcı türü ve erişim zamanı gibi sınırlı teknik kayıtları güvenlik ve hizmet sürekliliği amacıyla işleyebilir. Dış platformların kendi gizlilik uygulamalarından ilgili hizmet sağlayıcı sorumludur.</p>
+          <h2>Çerezler</h2>
+          <p>Mevcut sürüm reklam veya profilleme çerezi kullanmaz. Zorunlu teknik özellikler eklenirse bu politika güncellenir ve gerektiğinde kullanıcı tercihi alınır.</p>
+          <h2>İletişim</h2>
+          <p>Gizlilikle ilgili sorularınızı <a href={business.emailHref}>{business.email}</a> adresine iletebilirsiniz.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SiteFooter({ setPage }) {
+  return (
+    <footer className="site-footer">
+      <div className="footer-grid">
+        <div className="footer-brand">
+          <strong>MEKA</strong>
+          <span>Moto Garage</span>
+          <p>Simav'da motosiklet servisi, bakım, yedek parça ve aksesuar desteği.</p>
+        </div>
+        <div>
+          <h2>Hızlı bağlantılar</h2>
+          <button type="button" onClick={() => setPage("products")}>Ürünler</button>
+          <button type="button" onClick={() => setPage("about")}>Hakkımızda</button>
+          <button type="button" onClick={() => setPage("faq")}>Sıkça sorulan sorular</button>
+          <button type="button" onClick={() => setPage("contact")}>İletişim</button>
+        </div>
+        <div>
+          <h2>İletişim</h2>
+          <a href={business.phoneHref}>{business.phone}</a>
+          <a href={business.emailHref}>{business.email}</a>
+          <a href={business.instagramHref}>{business.instagram}</a>
+          <span>{business.address}, {business.city}</span>
+        </div>
+        <div>
+          <h2>Yasal</h2>
+          <button type="button" onClick={() => setPage("kvkk")}>KVKK Aydınlatma Metni</button>
+          <button type="button" onClick={() => setPage("privacy")}>Gizlilik Politikası</button>
+        </div>
+      </div>
+      <div className="footer-bottom">
+        <span>© {new Date().getFullYear()} {business.brand}. Tüm hakları saklıdır.</span>
+        <a href="https://uclergnlts.com" target="_blank" rel="noreferrer">Site designed &amp; developed by uclergnlts.com</a>
+      </div>
+    </footer>
+  );
+}
+
+function ContactPage() {
+  const [appointment, setAppointment] = useState({ name: "", motorcycle: "", request: "" });
+
+  const sendAppointment = (event) => {
+    event.preventDefault();
+    const message = [
+      "Merhaba MEKA Moto Garage, servis randevusu hakkında bilgi almak istiyorum.",
+      `Ad: ${appointment.name}`,
+      `Motosiklet: ${appointment.motorcycle}`,
+      `Talep: ${appointment.request}`,
+    ].join("\n");
+    window.open(`${business.whatsappHref}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <>
       <section className="contact-hero page-section" id="iletisim">
@@ -306,7 +448,7 @@ function ContactPage({ setView }) {
           <p>Telefon, e-posta, Instagram veya mağaza ziyaretiyle ürün ve servis bilgisi alabilirsiniz.</p>
           <div className="contact-quick-actions">
             <a className="primary-btn" href={business.phoneHref}><Phone size={18} /> Hemen ara</a>
-            <a className="secondary-btn" href={business.instagramHref}><Instagram size={18} /> Instagram</a>
+            <a className="secondary-btn" href={business.whatsappHref} target="_blank" rel="noreferrer"><MessageCircle size={18} /> WhatsApp</a>
           </div>
         </div>
         <div className="contact-card contact-card-strong">
@@ -328,14 +470,27 @@ function ContactPage({ setView }) {
             <span><Wrench size={18} /> Bakım, arıza tespiti, parça ve aksesuar desteği.</span>
           </div>
         </div>
-        <div className="map-placeholder">
+        <a className="map-placeholder" href={business.mapsHref} target="_blank" rel="noreferrer">
           <MapPin size={34} />
           <strong>{business.brand}</strong>
           <span>{business.city}</span>
+          <small><Navigation size={16} /> Google Maps'te yol tarifi al</small>
+        </a>
+      </section>
+
+      <section className="appointment-section">
+        <div>
+          <span className="eyebrow dark">Hızlı randevu</span>
+          <h2>Servis talebini WhatsApp üzerinden ilet.</h2>
+          <p>Bilgileri doldurduğunuzda hazır mesaj açılır. Randevu, işletmenin dönüşüyle kesinleşir.</p>
         </div>
-        <button className="outline-btn" type="button" onClick={() => setView("admin")}>
-          Yönetim panelini görüntüle
-        </button>
+        <form className="appointment-form" onSubmit={sendAppointment}>
+          <label>Adınız<input value={appointment.name} onChange={(event) => setAppointment({ ...appointment, name: event.target.value })} required /></label>
+          <label>Motosiklet marka/model<input value={appointment.motorcycle} onChange={(event) => setAppointment({ ...appointment, motorcycle: event.target.value })} placeholder="Örn. Yamaha MT-07" required /></label>
+          <label>Servis talebi<textarea value={appointment.request} onChange={(event) => setAppointment({ ...appointment, request: event.target.value })} placeholder="Bakım veya arıza hakkında kısa bilgi" required /></label>
+          <label className="appointment-consent"><input type="checkbox" required /> <span>Bilgilerimin talebimin yanıtlanması amacıyla kullanılmasını ve <a href="/kvkk-aydinlatma-metni">KVKK Aydınlatma Metni</a>'ni okuduğumu kabul ediyorum.</span></label>
+          <button className="primary-btn" type="submit"><MessageCircle size={18} /> WhatsApp mesajını hazırla</button>
+        </form>
       </section>
     </>
   );
@@ -360,13 +515,20 @@ function ProductsPreview({ setPage }) {
 
 function ProductGrid({ limit, items = products }) {
   const visibleProducts = limit ? items.slice(0, limit) : items;
+  const [productImages, setProductImages] = useState(getProductImages);
+
+  useEffect(() => {
+    const syncImages = (event) => setProductImages(event.detail ?? getProductImages());
+    window.addEventListener(PRODUCT_IMAGES_EVENT, syncImages);
+    return () => window.removeEventListener(PRODUCT_IMAGES_EVENT, syncImages);
+  }, []);
 
   return (
     <div className="product-grid">
       {visibleProducts.map((product) => (
         <article className="product-card" key={product.id}>
           <div className={`product-visual ${product.image}`}>
-            <Sparkles size={22} />
+            {productImages[product.id] ? <img src={productImages[product.id]} alt={product.name} /> : <Sparkles size={22} />}
           </div>
           <div className="product-info">
             <span>{product.category}</span>
@@ -378,7 +540,7 @@ function ProductGrid({ limit, items = products }) {
             </div>
             <div className="product-price-row">
               <strong>{formatCurrency(product.price)}</strong>
-              <a href={business.phoneHref}>Teklif al</a>
+              <a href={`${business.whatsappHref}?text=${encodeURIComponent(`Merhaba, ${product.name} hakkında fiyat ve uyumluluk bilgisi almak istiyorum.`)}`} target="_blank" rel="noreferrer">Teklif al</a>
             </div>
           </div>
         </article>

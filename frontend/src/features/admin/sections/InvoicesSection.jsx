@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
+import { Download, Pencil, Plus, Printer, Save, Search, Trash2, X } from "lucide-react";
 import { DataTable } from "../../../components/ui/DataTable.jsx";
 import { MetricCard } from "../../../components/ui/MetricCard.jsx";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
@@ -15,6 +15,9 @@ const emptyInvoiceForm = {
   amount: "",
   status: "Taslak",
   date: "Bugün",
+  discount: "0",
+  taxRate: "20",
+  items: [{ description: "", quantity: 1, unitPrice: "" }],
 };
 
 export function InvoicesSection() {
@@ -86,6 +89,9 @@ export function InvoicesSection() {
       amount: invoice.amount,
       status: invoice.status,
       date: invoice.date,
+      discount: invoice.discount ?? "0",
+      taxRate: invoice.taxRate ?? "20",
+      items: invoice.items?.length ? invoice.items : [{ description: invoice.description, quantity: 1, unitPrice: invoice.amount }],
     });
   };
 
@@ -99,12 +105,13 @@ export function InvoicesSection() {
     setActionError(null);
 
     try {
+      const payload = { ...form, amount: calculatedTotal, description: form.items.map((item) => item.description).filter(Boolean).join(", ") || form.description };
       if (editingId) {
-        const updatedInvoice = await api.invoices.update(editingId, form);
-        setInvoiceList((current) => current.map((invoice) => invoice.id === editingId ? updatedInvoice : invoice));
+        const updatedInvoice = await api.invoices.update(editingId, payload);
+        setInvoiceList((current) => current.map((invoice) => invoice.id === editingId ? { ...updatedInvoice, ...form, amount: calculatedTotal } : invoice));
       } else {
-        const createdInvoice = await api.invoices.create(form);
-        setInvoiceList((current) => [createdInvoice, ...current]);
+        const createdInvoice = await api.invoices.create(payload);
+        setInvoiceList((current) => [{ ...createdInvoice, ...form, amount: calculatedTotal }, ...current]);
       }
 
       resetForm();
@@ -116,7 +123,18 @@ export function InvoicesSection() {
     }
   };
 
+  const subtotal = form.items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0);
+  const discounted = Math.max(0, subtotal - Number(form.discount || 0));
+  const calculatedTotal = Math.round(discounted * (1 + Number(form.taxRate || 0) / 100));
+  const updateItem = (index, field, value) => setForm((current) => ({ ...current, items: current.items.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item) }));
+  const printInvoice = (invoice) => {
+    const popup = window.open("", "_blank", "width=850,height=700"); if (!popup) return;
+    const rows = (invoice.items ?? [{ description: invoice.description, quantity: 1, unitPrice: invoice.amount }]).map((item) => `<tr><td>${item.description}</td><td>${item.quantity}</td><td>${formatCurrency(item.unitPrice)}</td></tr>`).join("");
+    popup.document.write(`<html><head><title>${invoice.id}</title><style>body{font-family:Arial;padding:40px}h1{border-bottom:3px solid #d60000}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:10px;text-align:left}</style></head><body><h1>MEKA Moto Garage · Fatura/Teklif</h1><p><b>No:</b> ${invoice.id}<br><b>Müşteri:</b> ${invoice.customer}<br><b>Tarih:</b> ${invoice.date}</p><table><tr><th>Kalem</th><th>Adet</th><th>Birim fiyat</th></tr>${rows}</table><h2>Toplam: ${formatCurrency(invoice.amount)}</h2><button onclick="window.print()">Yazdır</button></body></html>`); popup.document.close();
+  };
+
   const deleteInvoice = async (invoiceId) => {
+    if (!window.confirm(`“${invoiceId}” faturasını silmek istediğinizden emin misiniz?`)) return;
     setActionError(null);
 
     try {
@@ -126,6 +144,21 @@ export function InvoicesSection() {
     } catch (requestError) {
       setActionError(requestError.message);
     }
+  };
+
+  const downloadCsv = () => {
+    const escapeCell = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+    const rows = [
+      ["Fatura No", "Müşteri", "Açıklama", "Tutar", "Durum", "Tarih"],
+      ...filteredInvoices.map((invoice) => [invoice.id, invoice.customer, invoice.description, invoice.amount, invoice.status, invoice.date]),
+    ];
+    const csv = `\uFEFF${rows.map((row) => row.map(escapeCell).join(";")).join("\n")}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `meka-fatura-raporu-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -173,7 +206,7 @@ export function InvoicesSection() {
           </label>
           <label>
             Tutar
-            <input type="number" min="0" value={form.amount} onChange={(event) => updateField("amount", event.target.value)} required />
+            <input type="number" min="0" value={calculatedTotal || form.amount} readOnly />
           </label>
           <label>
             Durum
@@ -187,13 +220,17 @@ export function InvoicesSection() {
             Tarih
             <input value={form.date} onChange={(event) => updateField("date", event.target.value)} required />
           </label>
+          <label>İndirim<input type="number" min="0" value={form.discount} onChange={(event) => updateField("discount", event.target.value)} /></label>
+          <label>Vergi oranı (%)<input type="number" min="0" value={form.taxRate} onChange={(event) => updateField("taxRate", event.target.value)} /></label>
         </div>
+        <div className="invoice-line-editor"><div className="form-heading"><h3>Fatura kalemleri</h3><button type="button" className="outline-mini-btn" onClick={() => setForm((current) => ({ ...current, items: [...current.items, { description: "", quantity: 1, unitPrice: "" }] }))}>Kalem ekle</button></div>{form.items.map((item, index) => <div className="invoice-line" key={`line-${index}`}><input placeholder="Ürün veya işçilik" value={item.description} onChange={(event) => updateItem(index, "description", event.target.value)} required /><input type="number" min="1" placeholder="Adet" value={item.quantity} onChange={(event) => updateItem(index, "quantity", event.target.value)} required /><input type="number" min="0" placeholder="Birim fiyat" value={item.unitPrice} onChange={(event) => updateItem(index, "unitPrice", event.target.value)} required /><button type="button" onClick={() => setForm((current) => ({ ...current, items: current.items.filter((_, itemIndex) => itemIndex !== index) }))}><X size={16} /></button></div>)}<strong className="invoice-total">Hesaplanan toplam: {formatCurrency(calculatedTotal)}</strong></div>
         <button className="primary-btn compact" type="submit" disabled={isSaving}>
           <Save size={18} /> {isSaving ? "Kaydediliyor" : "Kaydet"}
         </button>
       </form>
       <div className="quick-actions">
         <button type="button" onClick={() => setShowReport((current) => !current)}><Download size={18} /> Aylık rapor özeti</button>
+        <button type="button" onClick={downloadCsv}><Download size={18} /> CSV indir</button>
       </div>
       {showReport ? (
         <div className="report-panel">
@@ -218,6 +255,7 @@ export function InvoicesSection() {
             invoice.status,
             invoice.date,
             <div className="row-actions">
+              <button type="button" onClick={() => printInvoice(invoice)} aria-label={`${invoice.id} yazdır`}><Printer size={16} /></button>
               <button type="button" onClick={() => startEdit(invoice)} aria-label={`${invoice.id} düzenle`}>
                 <Pencil size={16} />
               </button>

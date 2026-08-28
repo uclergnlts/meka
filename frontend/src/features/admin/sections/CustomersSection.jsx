@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { Pencil, PhoneCall, Save, Search, Trash2, UserPlus, X } from "lucide-react";
+import { Download, Eye, Pencil, PhoneCall, Save, Search, Trash2, UserPlus, X } from "lucide-react";
 import { DataTable } from "../../../components/ui/DataTable.jsx";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
 import { ResourceNotice } from "../../../components/ui/ResourceNotice.jsx";
 import { customers } from "../../../data/operations.js";
+import { business } from "../../../data/business.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { api } from "../../../services/apiClient.js";
 
@@ -14,6 +15,8 @@ const emptyCustomerForm = {
   lastAction: "",
   date: "Bugün",
   status: "Aktif servis",
+  nextMaintenance: "",
+  notes: "",
 };
 
 export function CustomersSection() {
@@ -25,6 +28,8 @@ export function CustomersSection() {
   const [isSaving, setIsSaving] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [showCallList, setShowCallList] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const filteredCustomers = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
@@ -71,6 +76,8 @@ export function CustomersSection() {
       lastAction: customer.lastAction,
       date: customer.date,
       status: customer.status,
+      nextMaintenance: customer.nextMaintenance ?? "",
+      notes: customer.notes ?? "",
     });
   };
 
@@ -82,10 +89,10 @@ export function CustomersSection() {
     try {
       if (editingId) {
         const updatedCustomer = await api.customers.update(editingId, form);
-        setCustomerList((current) => current.map((customer) => customer.id === editingId ? updatedCustomer : customer));
+        setCustomerList((current) => current.map((customer) => customer.id === editingId ? { ...updatedCustomer, ...form } : customer));
       } else {
         const createdCustomer = await api.customers.create(form);
-        setCustomerList((current) => [createdCustomer, ...current]);
+        setCustomerList((current) => [{ ...createdCustomer, ...form }, ...current]);
       }
 
       resetForm();
@@ -98,6 +105,8 @@ export function CustomersSection() {
   };
 
   const deleteCustomer = async (customerId) => {
+    const customer = customerList.find((item) => item.id === customerId);
+    if (!window.confirm(`“${customer?.name ?? customerId}” müşteri kaydını silmek istediğinizden emin misiniz?`)) return;
     setActionError(null);
 
     try {
@@ -107,6 +116,25 @@ export function CustomersSection() {
     } catch (requestError) {
       setActionError(requestError.message);
     }
+  };
+
+  const downloadCsv = () => {
+    const rows = [["Müşteri", "Telefon", "Motosiklet", "Son işlem", "Tarih", "Durum"], ...filteredCustomers.map((customer) => [customer.name, customer.phone, customer.motorcycle, customer.lastAction, customer.date, customer.status])];
+    const csv = `\uFEFF${rows.map((row) => row.map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`).join(";")).join("\n")}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a"); link.href = url; link.download = "meka-musteriler.csv"; link.click(); URL.revokeObjectURL(url);
+  };
+
+  const reminders = customerList.filter((customer) => customer.nextMaintenance).sort((a, b) => a.nextMaintenance.localeCompare(b.nextMaintenance));
+  const bulkStatus = (status) => {
+    if (!selectedIds.length) return;
+    setCustomerList((current) => current.map((customer) => selectedIds.includes(customer.id) ? { ...customer, status } : customer));
+    setSelectedIds([]);
+  };
+  const bulkDelete = () => {
+    if (!selectedIds.length || !window.confirm(`${selectedIds.length} müşteri kaydı listeden çıkarılacak. Devam edilsin mi?`)) return;
+    setCustomerList((current) => current.filter((customer) => !selectedIds.includes(customer.id)));
+    setSelectedIds([]);
   };
 
   return (
@@ -165,6 +193,8 @@ export function CustomersSection() {
               <option>Randevu alındı</option>
             </select>
           </label>
+          <label>Sonraki bakım<input type="date" value={form.nextMaintenance} onChange={(event) => updateField("nextMaintenance", event.target.value)} /></label>
+          <label>Notlar<input value={form.notes} onChange={(event) => updateField("notes", event.target.value)} /></label>
         </div>
         <button className="primary-btn compact" type="submit" disabled={isSaving}>
           <Save size={18} /> {isSaving ? "Kaydediliyor" : "Kaydet"}
@@ -172,7 +202,11 @@ export function CustomersSection() {
       </form>
       <div className="quick-actions">
         <button type="button" onClick={() => setShowCallList((current) => !current)}><PhoneCall size={18} /> Aranacaklar listesi</button>
+        <button type="button" onClick={downloadCsv}><Download size={18} /> Müşteri CSV</button>
       </div>
+      <div className="bulk-toolbar"><span>{selectedIds.length} kayıt seçili</span><button type="button" onClick={() => bulkStatus("Aranacak")}>Aranacak yap</button><button type="button" onClick={() => bulkStatus("Teslim edildi")}>Teslim edildi yap</button><button className="danger-text" type="button" onClick={bulkDelete}>Seçilenleri kaldır</button></div>
+      {reminders.length ? <div className="reminder-panel"><div className="form-heading"><h3>Bakım hatırlatmaları</h3><span>{reminders.length} kayıt</span></div>{reminders.slice(0, 8).map((customer) => <a href={`${business.whatsappHref}?text=${encodeURIComponent(`Merhaba ${customer.name}, ${customer.motorcycle} için yaklaşan bakımınızı hatırlatmak isteriz.`)}`} target="_blank" rel="noreferrer" key={`rem-${customer.id}`}><strong>{customer.name}</strong><span>{customer.motorcycle}</span><small>{customer.nextMaintenance}</small></a>)}</div> : null}
+      {selectedCustomer ? <div className="customer-detail-card"><div className="form-heading"><h3>{selectedCustomer.name}</h3><button className="icon-action" type="button" onClick={() => setSelectedCustomer(null)}><X size={18} /></button></div><div className="customer-detail-grid"><span><small>Telefon</small><strong>{selectedCustomer.phone}</strong></span><span><small>Motosiklet</small><strong>{selectedCustomer.motorcycle}</strong></span><span><small>Son işlem</small><strong>{selectedCustomer.lastAction}</strong></span><span><small>Sonraki bakım</small><strong>{selectedCustomer.nextMaintenance || "Planlanmadı"}</strong></span><span className="wide"><small>Notlar</small><strong>{selectedCustomer.notes || "Not bulunmuyor"}</strong></span></div></div> : null}
       {showCallList ? (
         <div className="call-list-panel">
           {callList.map((customer) => (
@@ -186,10 +220,11 @@ export function CustomersSection() {
       ) : null}
       <DataTable
         title="Müşteri kartları"
-        columns={["Müşteri", "Telefon", "Motosiklet", "Son işlem", "Tarih", "Durum", "İşlem"]}
+        columns={["Seç", "Müşteri", "Telefon", "Motosiklet", "Son işlem", "Tarih", "Durum", "İşlem"]}
         rows={filteredCustomers.map((customer) => ({
           id: customer.id,
           cells: [
+            <input type="checkbox" checked={selectedIds.includes(customer.id)} onChange={(event) => setSelectedIds((current) => event.target.checked ? [...current, customer.id] : current.filter((id) => id !== customer.id))} aria-label={`${customer.name} seç`} />,
             customer.name,
             customer.phone,
             customer.motorcycle,
@@ -197,6 +232,7 @@ export function CustomersSection() {
             customer.date,
             customer.status,
             <div className="row-actions">
+              <button type="button" onClick={() => setSelectedCustomer(customer)} aria-label={`${customer.name} detay`}><Eye size={16} /></button>
               <button type="button" onClick={() => startEdit(customer)} aria-label={`${customer.name} düzenle`}>
                 <Pencil size={16} />
               </button>

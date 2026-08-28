@@ -1,12 +1,9 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, PackagePlus, Save, Search } from "lucide-react";
+import { AlertTriangle, Download, PackagePlus, RotateCcw, Save, Search } from "lucide-react";
 import { DataTable } from "../../../components/ui/DataTable.jsx";
 import { MetricCard } from "../../../components/ui/MetricCard.jsx";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
-import { ResourceNotice } from "../../../components/ui/ResourceNotice.jsx";
 import { products } from "../../../data/catalog.js";
-import { useApiResource } from "../../../hooks/useApiResource.js";
-import { api } from "../../../services/apiClient.js";
 import { stockStatus } from "../../../utils/formatters.js";
 
 export function StockSection() {
@@ -19,7 +16,12 @@ export function StockSection() {
     status: stockStatus(product.stock, product.minStock),
     lastMovement: "Başlangıç stoğu",
   }));
-  const { data: stockCards, setData: setStockCards, error, isLoading } = useApiResource(api.stock.list, fallbackStockCards);
+  const [stockCards, setStockCardsState] = useState(() => {
+    try { return JSON.parse(window.localStorage.getItem("meka-stock-cards")) ?? fallbackStockCards; } catch { return fallbackStockCards; }
+  });
+  const [movementHistory, setMovementHistory] = useState(() => {
+    try { return JSON.parse(window.localStorage.getItem("meka-stock-history")) ?? []; } catch { return []; }
+  });
   const [query, setQuery] = useState("");
   const [filterMode, setFilterMode] = useState("all");
   const [movementForm, setMovementForm] = useState({
@@ -27,6 +29,18 @@ export function StockSection() {
     type: "in",
     quantity: "",
     note: "",
+    supplier: "",
+    purchasePrice: "",
+    salePrice: "",
+    shelf: "",
+    barcode: "",
+  });
+  const [historyDate, setHistoryDate] = useState("");
+
+  const setStockCards = (updater) => setStockCardsState((current) => {
+    const next = typeof updater === "function" ? updater(current) : updater;
+    window.localStorage.setItem("meka-stock-cards", JSON.stringify(next));
+    return next;
   });
 
   const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
@@ -84,8 +98,30 @@ export function StockSection() {
         stock: nextStock,
         status: stockStatus(nextStock, product.minStock),
         lastMovement: `${movementForm.type === "out" ? "Çıkış" : "Giriş"}: ${quantity} adet${movementForm.note ? ` · ${movementForm.note}` : ""}`,
+        supplier: movementForm.supplier || product.supplier || "-",
+        purchasePrice: movementForm.purchasePrice || product.purchasePrice || 0,
+        salePrice: movementForm.salePrice || product.salePrice || 0,
+        shelf: movementForm.shelf || product.shelf || "-",
+        barcode: movementForm.barcode || product.barcode || "-",
       };
     }));
+
+    const product = stockCards.find((item) => item.productId === movementForm.productId);
+    const movement = {
+      id: `MOV-${Date.now()}`,
+      product: product?.name ?? movementForm.productId,
+      type: movementForm.type === "out" ? "Çıkış" : "Giriş",
+      quantity,
+      note: movementForm.note || "-",
+      date: new Date().toLocaleString("tr-TR"),
+      createdAt: new Date().toISOString(),
+      productId: movementForm.productId,
+    };
+    setMovementHistory((current) => {
+      const next = [movement, ...current].slice(0, 100);
+      window.localStorage.setItem("meka-stock-history", JSON.stringify(next));
+      return next;
+    });
 
     setMovementForm((current) => ({
       ...current,
@@ -94,10 +130,24 @@ export function StockSection() {
     }));
   };
 
+  const undoLastMovement = () => {
+    const last = movementHistory[0];
+    if (!last || !window.confirm(`${last.product} için son ${last.type.toLocaleLowerCase("tr-TR")} hareketi geri alınacak. Devam edilsin mi?`)) return;
+    setStockCards((current) => current.map((product) => product.productId === last.productId ? { ...product, stock: last.type === "Giriş" ? Math.max(0, product.stock - last.quantity) : product.stock + last.quantity } : product));
+    setMovementHistory((current) => { const next = current.slice(1); localStorage.setItem("meka-stock-history", JSON.stringify(next)); return next; });
+  };
+
+  const downloadCriticalCsv = () => {
+    const critical = stockCards.filter((product) => product.stock <= product.minStock);
+    const rows = [["Ürün", "Kategori", "Mevcut", "Minimum", "Durum"], ...critical.map((product) => [product.name, product.category, product.stock, product.minStock, product.status])];
+    const csv = `\uFEFF${rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(";")).join("\n")}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a"); link.href = url; link.download = "meka-kritik-stok.csv"; link.click(); URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <PageHeading title="Stok yönetimi" description="Minimum stok, sipariş ihtiyacı ve raf durumlarını takip edin." chip="Anlık stok" />
-      <ResourceNotice isLoading={isLoading} error={error} />
       <div className="metric-grid stock-metrics">
         <MetricCard label="Toplam adet" value={totalStock} trend={`${stockCards.length} ürün grubu`} />
         <MetricCard label="Sipariş ihtiyacı" value={orderNeeded} trend="Öncelikli" />
@@ -142,6 +192,11 @@ export function StockSection() {
             Not
             <input value={movementForm.note} onChange={(event) => updateMovementField("note", event.target.value)} placeholder="Tedarik, servis, satış..." />
           </label>
+          <label>Tedarikçi<input value={movementForm.supplier} onChange={(event) => updateMovementField("supplier", event.target.value)} /></label>
+          <label>Alış fiyatı<input type="number" min="0" value={movementForm.purchasePrice} onChange={(event) => updateMovementField("purchasePrice", event.target.value)} /></label>
+          <label>Satış fiyatı<input type="number" min="0" value={movementForm.salePrice} onChange={(event) => updateMovementField("salePrice", event.target.value)} /></label>
+          <label>Raf konumu<input value={movementForm.shelf} onChange={(event) => updateMovementField("shelf", event.target.value)} /></label>
+          <label>Barkod<input value={movementForm.barcode} onChange={(event) => updateMovementField("barcode", event.target.value)} /></label>
         </div>
         <button className="primary-btn compact" type="submit">
           <Save size={18} /> Hareketi işle
@@ -150,10 +205,12 @@ export function StockSection() {
       <div className="quick-actions">
         <button type="button" onClick={() => setMovementForm((current) => ({ ...current, type: "in" }))}><PackagePlus size={18} /> Stok girişi</button>
         <button type="button" onClick={() => setFilterMode("critical")}><AlertTriangle size={18} /> Kritik stok raporu</button>
+        <button type="button" onClick={downloadCriticalCsv}><Download size={18} /> Kritik stok CSV</button>
+        <button type="button" onClick={undoLastMovement} disabled={!movementHistory.length}><RotateCcw size={18} /> Son hareketi geri al</button>
       </div>
       <DataTable
         title="Stok kartları"
-        columns={["Ürün", "Kategori", "Mevcut", "Minimum", "Durum", "Son hareket", "İşlem"]}
+        columns={["Ürün", "Kategori", "Mevcut", "Minimum", "Tedarikçi", "Raf", "Barkod", "Durum", "Son hareket", "İşlem"]}
         rows={filteredStockCards.map((product) => ({
           id: product.productId,
           cells: [
@@ -161,12 +218,21 @@ export function StockSection() {
             product.category,
             `${product.stock} adet`,
             `Min. ${product.minStock}`,
+            product.supplier || "-",
+            product.shelf || "-",
+            product.barcode || "-",
             product.status,
             product.lastMovement ?? "-",
             <button className="outline-mini-btn" type="button" onClick={() => fillMovementProduct(product.productId)}>Seç</button>,
           ],
         }))}
       />
+      <DataTable
+        title="Son stok hareketleri"
+        columns={["Tarih", "Ürün", "Hareket", "Adet", "Not"]}
+        rows={movementHistory.filter((movement) => !historyDate || movement.createdAt?.startsWith(historyDate)).slice(0, 12).map((movement) => [movement.date, movement.product, movement.type, `${movement.quantity} adet`, movement.note])}
+      />
+      <label className="history-date-filter">Hareket tarihi<input type="date" value={historyDate} onChange={(event) => setHistoryDate(event.target.value)} /></label>
     </>
   );
 }
