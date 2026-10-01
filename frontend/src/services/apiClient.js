@@ -51,10 +51,12 @@ export function assetUrl(value) { return value?.startsWith("/uploads/") ? `${API
 export const api = {
   publicProducts: () => apiGet("/api/public/products"),
   publicSettings: () => apiGet("/api/public/settings"),
+  exportRecords: () => apiGet("/api/export"),
   auth: {
     session: () => apiGet("/api/auth/session"),
     login: payload => apiRequest("/api/auth/login", { method: "POST", body: JSON.stringify(payload) }),
     logout: () => apiRequest("/api/auth/logout", { method: "POST" }),
+    changePassword: payload => apiRequest("/api/auth/password", { method: "POST", body: JSON.stringify(payload) }),
   },
   dashboard: {
     summary: () => apiGet("/api/dashboard/summary"),

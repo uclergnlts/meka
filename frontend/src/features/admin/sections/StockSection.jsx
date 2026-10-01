@@ -100,7 +100,7 @@ export function StockSection() {
       <div className="metric-grid stock-metrics">
         <MetricCard label="Toplam adet" value={totalStock} trend={`${stockCards.length} ürün grubu`} />
         <MetricCard label="Sipariş ihtiyacı" value={orderNeeded} trend="Öncelikli" />
-        <MetricCard label="Raf sağlığı" value={`%${shelfHealth}`} trend="Normal" />
+        <MetricCard label="Raf sağlığı" value={`%${shelfHealth}`} trend={`${healthyCount}/${stockCards.length} ürün yeterli`} />
         <MetricCard label="Stok hareketi" value={movementHistory.length} trend="Son 100 kayıt" />
       </div>
       <div className="admin-toolbar">

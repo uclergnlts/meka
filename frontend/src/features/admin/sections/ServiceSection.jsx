@@ -24,9 +24,11 @@ function createEmptyServiceForm() {
   };
 }
 
+const emptySummary = { todayAppointments: 0 };
+
 export function ServiceSection() {
   const { data: jobs, reload: reloadJobs, error: jobsError, isLoading: jobsLoading } = useApiResource(api.service.jobs, []);
-  const { data: summary, error: summaryError, isLoading: summaryLoading } = useApiResource(api.service.summary, { averageDuration: "-" });
+  const { data: summary, error: summaryError, isLoading: summaryLoading } = useApiResource(api.service.summary, emptySummary);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [form, setForm] = useState(createEmptyServiceForm);
@@ -113,7 +115,7 @@ export function ServiceSection() {
         <MetricCard label="Planlı randevu" value={plannedJobs} trend={`${jobs.length} toplam iş`} />
         <MetricCard label="Parça bekleyen" value={waitingParts} trend="Stokla eşleşecek" />
         <MetricCard label="Teslim hazır" value={readyForDelivery} trend="Müşteri aranacak" />
-        <MetricCard label="Ortalama süre" value={summary.averageDuration} trend="Servis" />
+        <MetricCard label="Bugünkü randevu" value={summary.todayAppointments} trend="Plan tarihi bugün" />
       </div>
       <div className="admin-toolbar">
         <label className="admin-search">

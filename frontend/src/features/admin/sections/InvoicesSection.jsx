@@ -228,12 +228,12 @@ export function InvoicesSection() {
         </button>
       </form>
       <div className="quick-actions">
-        <button type="button" onClick={() => setShowReport((current) => !current)}><Download size={18} /> Aylık rapor özeti</button>
+        <button type="button" onClick={() => setShowReport((current) => !current)}><Download size={18} /> Rapor özeti</button>
         <button type="button" onClick={downloadCsv}><Download size={18} /> CSV indir</button>
       </div>
       {showReport ? (
         <div className="report-panel">
-          <span>Aylık fatura özeti</span>
+          <span>Fatura özeti · tüm kayıtlar</span>
           <strong>{formatCurrency(liveSummary.total)}</strong>
           <p>
             Tahsil edilen {formatCurrency(liveSummary.paid)}, bekleyen/taslak toplam {formatCurrency(liveSummary.pending)}.

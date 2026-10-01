@@ -14,7 +14,6 @@ export const serviceService = {
       todayAppointments: jobs.filter((job) => job.schedule === today || job.schedule.startsWith("Bugün")).length,
       waitingParts: jobs.filter((job) => job.status === "Parça bekliyor").length,
       readyForDelivery: jobs.filter((job) => job.status === "Teslim hazır").length,
-      averageDuration: "-",
     };
   },
 };

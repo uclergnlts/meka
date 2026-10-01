@@ -1692,12 +1692,15 @@ a.contact-row:hover {
 
 .metric-card {
   padding: 20px;
+  container-type: inline-size;
 }
 
+/* The figure shrinks with its card so long amounts are not cut off in the four-column grid. */
 .metric-card strong {
   display: block;
   margin: 12px 0 6px;
-  font-size: 30px;
+  font-size: clamp(18px, 15cqw, 30px);
+  overflow-wrap: anywhere;
 }
 
 .metric-card small {

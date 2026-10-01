@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { RotateCcw, Save } from "lucide-react";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
+import { PasswordForm } from "../components/PasswordForm.jsx";
 import { business, resetBusinessSettings, saveBusinessSettings } from "../../../data/business.js";
 
 const fields = [
@@ -60,6 +61,7 @@ export function BusinessSettingsSection() {
         </div>
       </form>
       <p className="branding-storage-note">Bu ayarlar sunucuda saklanır ve kaydedildiğinde tüm ziyaretçilere yansır.</p>
+      <PasswordForm />
     </>
   );
 }

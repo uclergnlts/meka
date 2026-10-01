@@ -10,6 +10,7 @@
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",
     "admin:create": "node scripts/create-admin.js",
+    "admin:reset-password": "node scripts/reset-admin-password.js",
     "test:mysql": "node --test --test-force-exit tests/mysql.integration.test.js"
   },
   "prisma": {

@@ -30,7 +30,7 @@ export function DashboardSection() {
 
   return (
     <>
-      <PageHeading title="Aylık operasyon özeti" description="Satışsız vitrin, teklif ve servis odaklı işletme takibi." />
+      <PageHeading title="Operasyon özeti" description="Satışsız vitrin, teklif ve servis odaklı işletme takibi." chip="Tüm kayıtlar" />
       <ResourceNotice isLoading={isLoading} error={error} />
       <div className="metric-grid">
         <MetricCard label="Gelir" value={formatCurrency(metrics.income)} trend="Ödenen faturalar + diğer gelir" />

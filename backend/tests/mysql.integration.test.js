@@ -134,6 +134,14 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
     const settingsNoSession = await fetch(`${origin}/api/settings/business`, { method: "PUT", headers: { "Content-Type": "application/json", "X-Meka-Request": "1" }, body: "{}" });
     assert.equal(settingsNoSession.status, 401);
 
+    // The export carries every record table but never admin accounts or sessions.
+    const exported = await request("/export");
+    assert.equal(exported.version, 2);
+    assert.deepEqual(Object.keys(exported.records).sort(), ["balanceLines", "customers", "invoices", "products", "serviceJobs", "settings", "stockMovements"]);
+    assert.ok(exported.records.products.some((row) => row.id === product.id));
+    assert.ok(exported.records.balanceLines.some((row) => row.id === incomeLine.id));
+    assert.equal((await fetch(`${origin}/api/export`)).status, 401);
+
     for (const path of ["/products", "/customers", "/invoices", "/invoices/summary", "/stock", "/stock/alerts", "/service/jobs", "/service/summary", "/dashboard/summary"]) {
       await request(path);
     }
@@ -187,8 +195,23 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
     await request(`/products/${product.id}`, "GET", undefined, 404);
     assert.equal((await fetch(`${origin}${replaced.image}`)).status, 404);
     assert.deepEqual(await readdir(uploadDir), []);
+    // Changing the password keeps this session, signs the others out and retires the old password.
+    const signIn = (candidate) => fetch(`${origin}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json", "X-Meka-Request": "1" }, body: JSON.stringify({ username, password: candidate }) });
+    const otherCookie = (await signIn(password)).headers.get("set-cookie").split(";")[0];
+    const newPassword = `yeni-${randomUUID()}`;
+    await request("/auth/password", "POST", { currentPassword: "yanlış-parola", newPassword }, 403);
+    await request("/auth/password", "POST", { currentPassword: password, newPassword: "kısa" }, 400);
+    await request("/auth/password", "POST", { currentPassword: password, newPassword });
+    await request("/customers");
+    assert.equal((await fetch(`${origin}/api/customers`, { headers: { Cookie: otherCookie } })).status, 401);
+    assert.equal((await signIn(password)).status, 401);
+    assert.equal((await signIn(newPassword)).status, 200);
     await request("/auth/logout", "POST");
     await request("/customers", "GET", undefined, 401);
+    // Five wrong passwords block this address, even for the right password, without locking the account.
+    for (let attempt = 0; attempt < 5; attempt += 1) assert.equal((await signIn("yanlış-parola")).status, 401);
+    assert.equal((await signIn(newPassword)).status, 429);
+    assert.equal((await prisma.admin.findUnique({ where: { username } })).lockedUntil, null);
   } finally {
     for (const [path, id] of created.reverse()) await request(`${path}/${id}`, "DELETE");
     await new Promise((resolve) => server.close(resolve));

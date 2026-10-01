@@ -40,6 +40,16 @@ npm run admin:create -w backend
 `admin:create` mevcut kullanıcıyı veya parola dosyasını değiştirmez. Örnek kayıtlar
 isteğe bağlı `npm run db:seed` ile eklenir; gerçek kayıtlı veritabanında kullanmayın.
 
+Parola panelde Ayarlar bölümünden değiştirilir (en az 10 karakter); değişiklik diğer
+cihazlardaki oturumları kapatır. Parola unutulursa
+`npm run admin:reset-password -w backend` yeni bir parola üretir, `.admin-login.txt`
+dosyasına yazar ve bütün oturumları kapatır.
+
+Aynı adresten 5 hatalı parola denemesi o adresi 15 dakika engeller; hesap ancak 30
+hatalı denemeden sonra kilitlenir. Adres sayacı bellekte tutulur. Uygulama bir ters
+vekilin (reverse proxy) arkasındaysa `TRUST_PROXY` vekil sayısına ayarlanmalıdır
+(çoğunlukla `1`); aksi halde bütün ziyaretçiler tek adres sayılır.
+
 Oturum 8 saat geçerlidir. Çıkış oturumu sunucuda iptal eder. Üretimde
 `NODE_ENV=production` ve HTTPS gereklidir. Frontend ile API aynı origin veya aynı
 site alt alanlarında bulunmalıdır; farklı siteler SameSite=Strict ile desteklenmez.
@@ -84,8 +94,13 @@ npm run build
 
 `db:backup`, `backend/backups/<tarih>/meka.sql` ve `uploads.tar.gz` üretir.
 Veritabanı ile fotoğraflar birlikte korunmalıdır. Yedekler, parola dosyası ve
-`.env` dosyaları Git'e dahil edilmez. Paneldeki yerel yedek düğmesi MySQL yedeğinin
-yerine geçmez; eski tarayıcı ayarları içindir.
+`.env` dosyaları Git'e dahil edilmez. Paneldeki "Kayıtları indir" düğmesi bütün
+kayıt tablolarını tek bir JSON dosyası olarak verir (`/api/export`); fotoğrafları ve
+yönetici hesabını içermez, geri yükleme için kullanılmaz ve MySQL yedeğinin yerine
+geçmez.
+
+`npm run lint` kod denetimini çalıştırır; CI aynı komutu, entegrasyon testini ve
+derlemeyi her PR'da çalıştırır.
 
 Geri yükleme yalnızca **yeni ve boş** bir veritabanında yapılmalıdır. SQL'i içe
 aktarın, arşivi `UPLOAD_DIR` konumuna açın ve bağlantıyı bu veritabanına yönlendirin.
@@ -101,7 +116,8 @@ karşılaştırılmıştır; bu komut yerel sabit `meka_before_verify`/`meka` ad
    Yerel (127.0.0.1/localhost) bağlantıda MySQL 8'in RSA anahtarı otomatik alınır.
    Uzak sunucuda bağlantı TLS'siz ise ve `ER_CANNOT_RETRIEVE_RSA_KEY` hatası çıkarsa
    TLS açın veya URL'ye `?allowPublicKeyRetrieval=true` ekleyin.
-3. `NODE_ENV=production`, `FRONTEND_ORIGIN`, `PORT` ve kalıcı `UPLOAD_DIR` ayarlayın.
+3. `NODE_ENV=production`, `FRONTEND_ORIGIN`, `PORT`, kalıcı `UPLOAD_DIR` ve vekil
+   arkasındaysa `TRUST_PROXY` ayarlayın.
 4. Yerel son SQL yedeğini ve uploads arşivini aktarın; üretim frontend derlemesini
    hazırlayın. `VITE_API_BASE_URL` yalnızca API farklı origin'deyse gerekir.
 5. HTTPS, cookie, public ürünler, yönetici girişi ve kayıt işlemlerini doğrulayın.
