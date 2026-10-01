@@ -1,4 +1,4 @@
-import { removeProductImage, storeProductImage } from "../../lib/uploads.js";
+import { removeUploadedImage, storeProductImage } from "../../lib/uploads.js";
 import { randomUUID } from "node:crypto";
 import { productRepository } from "./repository.js";
 import { validateProductPayload } from "./validation.js";
@@ -36,7 +36,7 @@ async function withStoredImage(payload, save) {
   try {
     return await save({ ...payload, image });
   } catch (error) {
-    if (image !== payload.image) await removeProductImage(image).catch(console.error);
+    if (image !== payload.image) await removeUploadedImage(image).catch(console.error);
     throw error;
   }
 }
@@ -44,7 +44,7 @@ async function withStoredImage(payload, save) {
 // The record is already saved at this point, so a failed cleanup must not fail the request.
 async function releaseImage(image) {
   try {
-    if (image?.startsWith("/uploads/") && await productRepository.countByImage(image) === 0) await removeProductImage(image);
+    if (image?.startsWith("/uploads/") && await productRepository.countByImage(image) === 0) await removeUploadedImage(image);
   } catch (error) {
     console.error(error);
   }
@@ -81,7 +81,20 @@ export const productService = {
     validateProductPayload(payload, { partial: true });
     const existing = await this.getProduct(id);
 
-    const updated = await withStoredImage(payload, (data) => productRepository.update(id, normalizeProductPayload(data)));
+    const updated = await withStoredImage(payload, async (data) => {
+      const updates = normalizeProductPayload(data);
+      if (updates.stock === undefined || updates.stock === existing.stock) return productRepository.update(id, updates);
+
+      const adjusted = await productRepository.updateWithStockAdjustment(id, updates, existing.stock);
+      if (!adjusted) {
+        const error = new Error("Stok bu sırada değişti. Sayfayı yenileyip tekrar deneyin.");
+        error.statusCode = 409;
+        error.code = "STOCK_CHANGED";
+        throw error;
+      }
+
+      return adjusted;
+    });
     if (updated.image !== existing.image) await releaseImage(existing.image);
 
     return updated;

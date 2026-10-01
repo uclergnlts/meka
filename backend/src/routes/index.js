@@ -5,6 +5,8 @@ import { serviceRouter } from "../api/service/index.js";
 import { stockRouter } from "../api/stock/index.js";
 import { customerRouter } from "../api/customers/index.js";
 import { invoiceRouter } from "../api/invoices/index.js";
+import { balanceRouter } from "../api/balance/index.js";
+import { settingsRouter } from "../api/settings/index.js";
 
 export const apiRouter = Router();
 
@@ -14,3 +16,5 @@ apiRouter.use("/stock", stockRouter);
 apiRouter.use("/service", serviceRouter);
 apiRouter.use("/customers", customerRouter);
 apiRouter.use("/invoices", invoiceRouter);
+apiRouter.use("/balance", balanceRouter);
+apiRouter.use("/settings", settingsRouter);

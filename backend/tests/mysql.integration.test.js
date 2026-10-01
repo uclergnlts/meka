@@ -1,6 +1,9 @@
 import { invoiceToForm, invoiceTotal } from "../../frontend/src/utils/invoices.js";
 import sharp from "sharp";
 import { randomUUID } from "node:crypto";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -9,6 +12,9 @@ const testUrl = process.env.MYSQL_TEST_DATABASE_URL;
 
 test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { skip: !testUrl }, async () => {
   process.env.DATABASE_URL = testUrl;
+  // Uploads go to a throwaway directory so the run never touches real product photos.
+  const uploadDir = await mkdtemp(path.join(tmpdir(), "meka-test-uploads-"));
+  process.env.UPLOAD_DIR = uploadDir;
   const { prisma } = await import("../src/lib/prisma.js");
   const { createApp } = await import("../src/app.js");
   const server = createApp().listen(0, "127.0.0.1");
@@ -24,6 +30,7 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
   assert.equal(login.status, 200);
   const cookie = login.headers.get("set-cookie").split(";")[0];
   const created = [];
+  const originalSettings = await prisma.setting.findMany();
   const request = async (path, method = "GET", body, status = 200) => {
     const response = await fetch(`${origin}/api${path}`, {
       method,
@@ -56,6 +63,12 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
     assert.equal((await fetch(`${origin}${replaced.image}`)).status, 200);
     assert.equal(product.name, "İğdır Çelik 🏍️");
     assert.equal((await request(`/products/${product.id}`, "PUT", { stock: 8 })).stock, 8);
+    // Editing stock on the product card leaves a movement for the difference.
+    const adjustment = (await request("/stock/history")).find((row) => row.productId === product.id);
+    assert.equal(adjustment.type, "Giriş");
+    assert.equal(adjustment.quantity, 6);
+    assert.equal((await request(`/products/${product.id}`, "PUT", { stock: 8, name: "İğdır Çelik 🏍️" })).stock, 8);
+    assert.equal((await request("/stock/history")).filter((row) => row.productId === product.id).length, 1);
 
     const notes = "Türkçe bakım notu 🛠️ ".repeat(500);
     const customer = await request("/customers", "POST", {
@@ -77,6 +90,49 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
     const updated = await request(`/invoices/${invoice.id}`, "PUT", { items: [], discount: 10 });
     assert.deepEqual(updated.items, []);
     assert.equal(Number(updated.discount), 10);
+
+    // Income is paid invoices plus manual income lines; expenses are manual lines only.
+    const before = (await request("/dashboard/summary")).metrics;
+    const paid = await request("/invoices", "POST", { customer: "Çağrı Şen", description: "Ödenen", amount: "150.10", status: "Ödendi", date: "2026-09-07" }, 201);
+    created.push(["/invoices", paid.id]);
+    const incomeLine = await request("/balance", "POST", { label: "Hurda satışı", amount: "49.90", type: "Gelir" }, 201);
+    created.push(["/balance", incomeLine.id]);
+    const expenseLine = await request("/balance", "POST", { label: "Kira", amount: 80, type: "Gider" }, 201);
+    created.push(["/balance", expenseLine.id]);
+    assert.equal(Number((await request(`/balance/${expenseLine.id}`, "PUT", { amount: "100.25" })).amount), 100.25);
+    await request("/balance", "POST", { label: "Geçersiz", amount: 10, type: "Diğer" }, 400);
+    await request("/balance", "POST", { label: "Geçersiz", amount: "-5", type: "Gider" }, 400);
+    const after = (await request("/dashboard/summary")).metrics;
+    const cents = (value) => Math.round(value * 100);
+    assert.equal(cents(after.invoiceIncome) - cents(before.invoiceIncome), 15010);
+    assert.equal(cents(after.otherIncome) - cents(before.otherIncome), 4990);
+    assert.equal(cents(after.expenses) - cents(before.expenses), 10025);
+    assert.equal(cents(after.income), cents(after.invoiceIncome) + cents(after.otherIncome));
+    assert.equal(cents(after.netBalance), cents(after.income) - cents(after.expenses));
+    assert.ok((await request("/balance")).some((line) => line.id === incomeLine.id));
+
+    // Business settings and brand images are stored on the server and readable without a session.
+    const publicSettings = async () => (await (await fetch(`${origin}/api/public/settings`)).json()).data;
+    await prisma.setting.deleteMany();
+    assert.deepEqual(await publicSettings(), { business: null, brand: {} });
+    await request("/settings/business", "PUT", { brand: "Test Garage", whatsappHref: "javascript:alert(1)" }, 400);
+    assert.deepEqual(await request("/settings/business", "PUT", { brand: " Test Garage ", phoneHref: "tel:+905550000000", unknown: "x" }), { brand: "Test Garage", phoneHref: "tel:+905550000000" });
+    assert.equal((await publicSettings()).business.brand, "Test Garage");
+    assert.equal(await request("/settings/business", "DELETE"), null);
+    assert.equal((await publicSettings()).business, null);
+    const brand = await request("/settings/brand", "PUT", { logo: image });
+    assert.match(brand.logo, /^\/uploads\/.+\.png$/);
+    assert.equal((await fetch(`${origin}${brand.logo}`)).headers.get("content-type"), "image/png");
+    const withFavicon = await request("/settings/brand", "PUT", { favicon: image });
+    assert.equal(withFavicon.logo, brand.logo);
+    const newLogo = await request("/settings/brand", "PUT", { logo: image });
+    assert.equal((await fetch(`${origin}${brand.logo}`)).status, 404);
+    assert.equal(newLogo.favicon, withFavicon.favicon);
+    await request("/settings/brand", "PUT", { logo: "/etc/passwd" }, 400);
+    assert.deepEqual(await request("/settings/brand", "PUT", { logo: null, favicon: null }), {});
+    assert.deepEqual((await publicSettings()).brand, {});
+    const settingsNoSession = await fetch(`${origin}/api/settings/business`, { method: "PUT", headers: { "Content-Type": "application/json", "X-Meka-Request": "1" }, body: "{}" });
+    assert.equal(settingsNoSession.status, 401);
 
     for (const path of ["/products", "/customers", "/invoices", "/invoices/summary", "/stock", "/stock/alerts", "/service/jobs", "/service/summary", "/dashboard/summary"]) {
       await request(path);
@@ -130,11 +186,15 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
     }
     await request(`/products/${product.id}`, "GET", undefined, 404);
     assert.equal((await fetch(`${origin}${replaced.image}`)).status, 404);
+    assert.deepEqual(await readdir(uploadDir), []);
     await request("/auth/logout", "POST");
     await request("/customers", "GET", undefined, 401);
   } finally {
     for (const [path, id] of created.reverse()) await request(`${path}/${id}`, "DELETE");
     await new Promise((resolve) => server.close(resolve));
+    await prisma.setting.deleteMany();
+    if (originalSettings.length) await prisma.setting.createMany({ data: originalSettings });
+    await rm(uploadDir, { recursive: true, force: true });
     await prisma.admin.delete({ where: { username } });
     await prisma.$disconnect();
   }

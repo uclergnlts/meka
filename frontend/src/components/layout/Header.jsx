@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bike, Menu, X } from "lucide-react";
 import { business } from "../../data/business.js";
+import { assetUrl } from "../../services/apiClient.js";
 import { BRAND_ASSETS_EVENT, getBrandAssets } from "../../utils/brandAssets.js";
 
 const navItems = [
@@ -43,7 +44,7 @@ export function Header({ currentView, setView, publicPage, setPublicPage }) {
     <header className="topbar">
       <button className="brand brand-button" type="button" aria-label={business.brand} onClick={() => navigateSite("home")}>
         {brandAssets.logo ? (
-          <img className="brand-uploaded-logo" src={brandAssets.logo} alt={business.brand} />
+          <img className="brand-uploaded-logo" src={assetUrl(brandAssets.logo)} alt={business.brand} />
         ) : (
           <>
             <span className="brand-mark"><Bike size={22} /></span>

@@ -123,3 +123,11 @@ model AdminSession {
   @@index([expiresAt])
   @@map("admin_sessions")
 }
+
+model Setting {
+  key       String   @id @db.VarChar(64)
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}

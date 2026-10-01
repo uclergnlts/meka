@@ -6,6 +6,7 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./config/env.js";
+import { settingsController } from "./api/settings/index.js";
 import { apiRouter } from "./routes/index.js";
 import { notFoundHandler } from "./middlewares/notFoundHandler.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
@@ -32,12 +33,13 @@ export function createApp() {
     res.json({ status: "ok", service: "meka-backend" });
   });
 
-  // Product photos are public; helmet's same-origin default would block them when the storefront is on another origin.
+  // Product photos and the logo are public; helmet's same-origin default would block them when the storefront is on another origin.
   app.use("/uploads", express.static(uploadDirectory, { dotfiles: "deny", fallthrough: false, maxAge: "1y", immutable: true, setHeaders: (res) => res.setHeader("Cross-Origin-Resource-Policy", "cross-origin") }));
   app.get("/api/public/products", async (req, res, next) => {
     try { res.json({ data: await prisma.product.findMany({ select: { id: true, name: true, category: true, brand: true, tag: true, image: true, compatibility: true }, orderBy: { createdAt: "desc" } }) }); }
     catch (error) { next(error); }
   });
+  app.get("/api/public/settings", settingsController.publicSettings);
   app.use("/api", requireRequestHeader);
   app.use("/api/auth", authRouter);
   app.use("/api", requireAdmin, apiRouter);

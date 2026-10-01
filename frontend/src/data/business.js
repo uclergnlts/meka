@@ -1,3 +1,5 @@
+import { api } from "../services/apiClient.js";
+
 const defaults = {
   brand: "MEKA Moto Garage",
   owner: "Metin Kalfa",
@@ -18,10 +20,14 @@ const defaults = {
   mapsHref: "https://www.google.com/maps/search/?api=1&query=Fatih+Mahallesi+Yeni+Cami+Caddesi+21%2FA+Simav+Kutahya",
 };
 
+// The server holds the settings; this browser copy only avoids a flash of the defaults
+// on the next visit and keeps the site readable when the API is unreachable.
+const STORAGE_KEY = "meka-business-settings";
+
 let stored = {};
 try {
   stored = typeof window !== "undefined"
-    ? JSON.parse(window.localStorage.getItem("meka-business-settings")) ?? {}
+    ? JSON.parse(window.localStorage.getItem(STORAGE_KEY)) ?? {}
     : {};
 } catch {
   stored = {};
@@ -30,19 +36,32 @@ try {
 export const business = { ...defaults, ...stored };
 export const BUSINESS_SETTINGS_EVENT = "meka-business-settings-change";
 
-export function saveBusinessSettings(settings) {
-  Object.assign(business, settings);
+function applySettings(settings) {
+  Object.keys(business).forEach((key) => delete business[key]);
+  Object.assign(business, defaults, settings);
   if (typeof window === "undefined") return;
-  window.localStorage.setItem("meka-business-settings", JSON.stringify(settings));
-  window.dispatchEvent(new CustomEvent(BUSINESS_SETTINGS_EVENT, { detail: settings }));
+  try {
+    if (settings) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    else window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // The copy is optional; private browsing or a full quota must not break the page.
+  }
+  window.dispatchEvent(new CustomEvent(BUSINESS_SETTINGS_EVENT, { detail: business }));
 }
 
-export function resetBusinessSettings() {
-  Object.keys(business).forEach((key) => delete business[key]);
-  Object.assign(business, defaults);
-  if (typeof window !== "undefined") {
-    window.localStorage.removeItem("meka-business-settings");
-    window.dispatchEvent(new CustomEvent(BUSINESS_SETTINGS_EVENT, { detail: defaults }));
-  }
-  return { ...defaults };
+// Called with the public settings response. When nothing has been saved on the server yet,
+// settings from an older browser-only version stay in place so they can be saved from the panel.
+export function applyServerBusinessSettings(settings) {
+  if (settings) applySettings(settings);
+}
+
+export async function saveBusinessSettings(settings) {
+  applySettings(await api.settings.saveBusiness(settings));
+  return { ...business };
+}
+
+export async function resetBusinessSettings() {
+  await api.settings.resetBusiness();
+  applySettings(null);
+  return { ...business };
 }

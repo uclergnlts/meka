@@ -35,7 +35,8 @@ async function apiRequest(path, options = {}) {
   if (response.status === 401 && !path.startsWith("/api/auth/")) window.dispatchEvent(new Event("meka-session-expired"));
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
-    throw new Error(payload?.message ?? `API isteği başarısız: ${response.status}`);
+    const details = Array.isArray(payload?.details) ? ` ${payload.details.join(" ")}` : "";
+    throw new Error(payload?.message ? `${payload.message}${details}` : `API isteği başarısız: ${response.status}`);
   }
 
   if (response.status === 204) return null;
@@ -49,6 +50,7 @@ async function apiRequest(path, options = {}) {
 export function assetUrl(value) { return value?.startsWith("/uploads/") ? `${API_BASE_URL}${value}` : value; }
 export const api = {
   publicProducts: () => apiGet("/api/public/products"),
+  publicSettings: () => apiGet("/api/public/settings"),
   auth: {
     session: () => apiGet("/api/auth/session"),
     login: payload => apiRequest("/api/auth/login", { method: "POST", body: JSON.stringify(payload) }),
@@ -113,6 +115,33 @@ export const api = {
     }),
     delete: (id) => apiRequest(`/api/invoices/${id}`, {
       method: "DELETE",
+    }),
+  },
+  balance: {
+    list: () => apiGet("/api/balance"),
+    create: (payload) => apiRequest("/api/balance", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+    update: (id, payload) => apiRequest(`/api/balance/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+    delete: (id) => apiRequest(`/api/balance/${id}`, {
+      method: "DELETE",
+    }),
+  },
+  settings: {
+    saveBusiness: (payload) => apiRequest("/api/settings/business", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+    resetBusiness: () => apiRequest("/api/settings/business", {
+      method: "DELETE",
+    }),
+    saveBrand: (payload) => apiRequest("/api/settings/brand", {
+      method: "PUT",
+      body: JSON.stringify(payload),
     }),
   },
 };

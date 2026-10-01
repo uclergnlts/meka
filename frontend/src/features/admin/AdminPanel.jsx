@@ -1,10 +1,11 @@
 import { useMemo } from "react";
-import { ArrowUpRight, BarChart3, Bike, Boxes, DatabaseBackup, Image, PackageCheck, ReceiptText, Settings, Users, Wrench } from "lucide-react";
+import { ArrowUpRight, BarChart3, Bike, Boxes, DatabaseBackup, Image, PackageCheck, ReceiptText, Settings, Users, Wallet, Wrench } from "lucide-react";
 import { AdminSidebar } from "./components/AdminSidebar.jsx";
 import { DashboardSection } from "./sections/DashboardSection.jsx";
 import { ProductsSection } from "./sections/ProductsSection.jsx";
 import { StockSection } from "./sections/StockSection.jsx";
 import { InvoicesSection } from "./sections/InvoicesSection.jsx";
+import { FinanceSection } from "./sections/FinanceSection.jsx";
 import { CustomersSection } from "./sections/CustomersSection.jsx";
 import { ServiceSection } from "./sections/ServiceSection.jsx";
 import { BrandingSection } from "./sections/BrandingSection.jsx";
@@ -17,6 +18,7 @@ export const adminSections = [
   { id: "stock", label: "Stok", icon: PackageCheck },
   { id: "service", label: "Servis", icon: Wrench },
   { id: "invoices", label: "Fatura", icon: ReceiptText },
+  { id: "finance", label: "Gelir/Gider", icon: Wallet },
   { id: "customers", label: "Müşteri", icon: Users },
   { id: "branding", label: "Logo", icon: Image },
   { id: "settings", label: "Ayarlar", icon: Settings },
@@ -31,6 +33,7 @@ export function AdminPanel({ activeSection, setActiveSection, onExit }) {
       stock: StockSection,
       service: ServiceSection,
       invoices: InvoicesSection,
+      finance: FinanceSection,
       customers: CustomersSection,
       branding: BrandingSection,
       settings: BusinessSettingsSection,

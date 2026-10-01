@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Image, RotateCcw, Save, Upload } from "lucide-react";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
-import { applyFavicon, getBrandAssets, saveBrandAssets } from "../../../utils/brandAssets.js";
+import { assetUrl } from "../../../services/apiClient.js";
+import { getBrandAssets, saveBrandAssets } from "../../../utils/brandAssets.js";
 
 const MAX_FILE_SIZE = 1024 * 1024;
 const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
@@ -27,6 +28,7 @@ export function BrandingSection() {
   const [assets, setAssets] = useState(getBrandAssets);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const selectImage = async (field, file) => {
     if (!file) return;
@@ -40,28 +42,32 @@ export function BrandingSection() {
     }
   };
 
-  const save = () => {
+  const save = async () => {
+    setIsSaving(true);
+    setNotice("");
     try {
-      saveBrandAssets(assets);
-      applyFavicon(assets.favicon);
+      setAssets(await saveBrandAssets(assets));
       setError("");
       setNotice("Logo ayarları kaydedildi ve siteye uygulandı.");
-    } catch {
-      setError("Görseller kaydedilemedi. Daha küçük dosyalar deneyin.");
+    } catch (saveError) {
+      setError(saveError.message || "Görseller kaydedilemedi.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const reset = () => {
+  const reset = async () => {
+    setIsSaving(true);
+    setNotice("");
     try {
-      const emptyAssets = {};
-      setAssets(emptyAssets);
-      saveBrandAssets(emptyAssets);
+      setAssets(await saveBrandAssets({}));
       document.querySelector('link[rel="icon"]')?.remove();
       setError("");
       setNotice("Varsayılan MEKA görünümüne dönüldü.");
-    } catch {
-      setNotice("");
-      setError("Logo ayarları sıfırlanamadı.");
+    } catch (resetError) {
+      setError(resetError.message || "Logo ayarları sıfırlanamadı.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -73,7 +79,7 @@ export function BrandingSection() {
       <div className="branding-grid">
         <article className="branding-card">
           <div className="branding-preview logo-preview-admin">
-            {assets.logo ? <img src={assets.logo} alt="Yüklenen ana logo önizlemesi" /> : <Image size={34} />}
+            {assets.logo ? <img src={assetUrl(assets.logo)} alt="Yüklenen ana logo önizlemesi" /> : <Image size={34} />}
           </div>
           <div>
             <h2>Ana logo</h2>
@@ -86,7 +92,7 @@ export function BrandingSection() {
         </article>
         <article className="branding-card">
           <div className="branding-preview favicon-preview-admin">
-            {assets.favicon ? <img src={assets.favicon} alt="Yüklenen favicon önizlemesi" /> : <span>ME</span>}
+            {assets.favicon ? <img src={assetUrl(assets.favicon)} alt="Yüklenen favicon önizlemesi" /> : <span>ME</span>}
           </div>
           <div>
             <h2>Tarayıcı simgesi</h2>
@@ -99,10 +105,10 @@ export function BrandingSection() {
         </article>
       </div>
       <div className="branding-actions">
-        <button className="primary-btn" type="button" onClick={save}><Save size={18} /> Değişiklikleri kaydet</button>
-        <button className="outline-btn" type="button" onClick={reset}><RotateCcw size={17} /> Varsayılana dön</button>
+        <button className="primary-btn" type="button" onClick={save} disabled={isSaving}><Save size={18} /> {isSaving ? "Kaydediliyor" : "Değişiklikleri kaydet"}</button>
+        <button className="outline-btn" type="button" onClick={reset} disabled={isSaving}><RotateCcw size={17} /> Varsayılana dön</button>
       </div>
-      <p className="branding-storage-note">Bu sürümde görseller bu tarayıcıda saklanır. Başka cihazlara aktarım için daha sonra sunucu tabanlı medya alanı eklenebilir.</p>
+      <p className="branding-storage-note">Görseller sunucuda saklanır ve kaydedildiğinde tüm ziyaretçilere yansır.</p>
     </>
   );
 }

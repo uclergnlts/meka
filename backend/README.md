@@ -46,11 +46,20 @@ site alt alanlarında bulunmalıdır; farklı siteler SameSite=Strict ile destek
 
 ## Veri ve dosyalar
 
-- `/api/public/products` yalnızca vitrin alanlarını sunar; `/uploads/*` ürün
-  görsellerini sunar. Diğer API'ler yönetici oturumu gerektirir.
+- `/api/public/products` yalnızca vitrin alanlarını, `/api/public/settings` işletme
+  bilgilerini ve logo/favicon yolunu sunar; `/uploads/*` görselleri sunar. Diğer
+  API'ler yönetici oturumu gerektirir.
 - Yazma istekleri `X-Meka-Request: 1` başlığını gerektirir; frontend bunu gönderir.
 - Ürün, müşteri, fatura, servis ve stok hareketleri MySQL'dedir. Stok değişikliği
   ile geçmiş aynı transaction içindedir. Negatif stok ve çift geri alma engellenir.
+  Ürün kartından stok değiştirmek de aradaki fark kadar bir hareket kaydeder; stok
+  geçmişi olan ürün silinemez.
+- Paneldeki işletme ayarları ve logo `settings` tablosunda saklanır ve tüm
+  ziyaretçilere yansır; tarayıcıdaki kopya yalnızca önbellektir. Logo ve favicon PNG
+  olarak `UPLOAD_DIR` içine yazılır. Bu tablo eklenmeden önce kurulmuş bir
+  veritabanında bir kez `npm run db:push` çalıştırılmalıdır.
+- Özetteki gelir, durumu "Ödendi" olan faturalar ile Gelir/Gider bölümüne elle
+  girilen gelir kayıtlarının toplamıdır; gider yalnızca elle girilen kayıtlardır.
 - Ürün fotoğrafları doğrulanıp WebP'ye dönüştürülür; varsayılan konum
   `backend/uploads`, değişken `UPLOAD_DIR`. Fotoğraf başına giriş sınırı 1 MB'dır.
   Ürün silinince veya fotoğrafı değişince, başka ürünün kullanmadığı eski dosya da
