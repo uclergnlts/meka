@@ -1,8 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { customerRepository } from "./repository.js";
 import { validateCustomerPayload } from "./validation.js";
 
 function createCustomerId() {
-  return `cus-${Date.now().toString(36)}`;
+  return `cus-${randomUUID()}`;
 }
 
 const allowedFields = ["name", "phone", "motorcycle", "lastAction", "date", "status", "nextMaintenance", "notes"];

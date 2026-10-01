@@ -7,7 +7,8 @@ export const serviceService = {
 
   async getSummary() {
     const jobs = await serviceRepository.findJobs();
-    const today = new Date().toISOString().slice(0, 10);
+    // en-CA formats as YYYY-MM-DD; the shop's day runs on Istanbul time, not UTC.
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date());
 
     return {
       todayAppointments: jobs.filter((job) => job.schedule === today || job.schedule.startsWith("Bugün")).length,

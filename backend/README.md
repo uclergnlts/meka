@@ -53,6 +53,9 @@ site alt alanlarında bulunmalıdır; farklı siteler SameSite=Strict ile destek
   ile geçmiş aynı transaction içindedir. Negatif stok ve çift geri alma engellenir.
 - Ürün fotoğrafları doğrulanıp WebP'ye dönüştürülür; varsayılan konum
   `backend/uploads`, değişken `UPLOAD_DIR`. Fotoğraf başına giriş sınırı 1 MB'dır.
+  Ürün silinince veya fotoğrafı değişince, başka ürünün kullanmadığı eski dosya da
+  silinir. Bu kontrol yalnızca bağlı veritabanına bakar; aynı klasörü paylaşan ikinci
+  bir veritabanıyla (ör. `meka_review`) paneli çalıştıracaksanız ayrı `UPLOAD_DIR` verin.
 - Para alanları DECIMAL(12,2), vergi DECIMAL(5,2). JSON'da ondalık değerler metin
   olarak dönebilir. TL gösterimi iki ondalık basamak içerir.
 - Kalemsiz eski fatura düzenlenirken mevcut toplam vergi dahil tek kaleme alınır,
@@ -86,6 +89,9 @@ karşılaştırılmıştır; bu komut yerel sabit `meka_before_verify`/`meka` ad
 1. Node.js 22.12+ ve MySQL 8+ ile npm/terminal erişimini sağlayıcıdan doğrulayın.
 2. Boş MySQL veritabanı ve kullanıcı oluşturun. `DATABASE_URL` değerini
    `mysql://DB_USER:URL_ENCODED_PASSWORD@DB_HOST:3306/DB_NAME` biçiminde tanımlayın.
+   Yerel (127.0.0.1/localhost) bağlantıda MySQL 8'in RSA anahtarı otomatik alınır.
+   Uzak sunucuda bağlantı TLS'siz ise ve `ER_CANNOT_RETRIEVE_RSA_KEY` hatası çıkarsa
+   TLS açın veya URL'ye `?allowPublicKeyRetrieval=true` ekleyin.
 3. `NODE_ENV=production`, `FRONTEND_ORIGIN`, `PORT` ve kalıcı `UPLOAD_DIR` ayarlayın.
 4. Yerel son SQL yedeğini ve uploads arşivini aktarın; üretim frontend derlemesini
    hazırlayın. `VITE_API_BASE_URL` yalnızca API farklı origin'deyse gerekir.

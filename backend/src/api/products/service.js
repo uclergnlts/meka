@@ -1,4 +1,4 @@
-import { storeProductImage } from "../../lib/uploads.js";
+import { removeProductImage, storeProductImage } from "../../lib/uploads.js";
 import { randomUUID } from "node:crypto";
 import { productRepository } from "./repository.js";
 import { validateProductPayload } from "./validation.js";
@@ -27,6 +27,29 @@ function normalizeProductPayload(payload, { withDefaults = false } = {}) {
   return normalized;
 }
 
+// Converts an uploaded image before saving and discards the new file if the save fails.
+async function withStoredImage(payload, save) {
+  if (payload.image === undefined) return save(payload);
+
+  const image = await storeProductImage(payload.image);
+
+  try {
+    return await save({ ...payload, image });
+  } catch (error) {
+    if (image !== payload.image) await removeProductImage(image).catch(console.error);
+    throw error;
+  }
+}
+
+// The record is already saved at this point, so a failed cleanup must not fail the request.
+async function releaseImage(image) {
+  try {
+    if (image?.startsWith("/uploads/") && await productRepository.countByImage(image) === 0) await removeProductImage(image);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 export const productService = {
   async listProducts() {
     return productRepository.findAll();
@@ -48,24 +71,26 @@ export const productService = {
   async createProduct(payload) {
     validateProductPayload(payload);
 
-    if (payload.image !== undefined) payload = { ...payload, image: await storeProductImage(payload.image) };
-    return productRepository.create({
+    return withStoredImage(payload, (data) => productRepository.create({
       id: createProductId(),
-      ...normalizeProductPayload(payload, { withDefaults: true }),
-    });
+      ...normalizeProductPayload(data, { withDefaults: true }),
+    }));
   },
 
   async updateProduct(id, payload) {
     validateProductPayload(payload, { partial: true });
-    await this.getProduct(id);
+    const existing = await this.getProduct(id);
 
-    if (payload.image !== undefined) payload = { ...payload, image: await storeProductImage(payload.image) };
-    return productRepository.update(id, normalizeProductPayload(payload));
+    const updated = await withStoredImage(payload, (data) => productRepository.update(id, normalizeProductPayload(data)));
+    if (updated.image !== existing.image) await releaseImage(existing.image);
+
+    return updated;
   },
 
   async deleteProduct(id) {
-    await this.getProduct(id);
+    const product = await this.getProduct(id);
     await productRepository.delete(id);
+    await releaseImage(product.image);
 
     return { id };
   },

@@ -49,6 +49,11 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
     const uploaded = await fetch(`${origin}${product.image}`);
     assert.equal(uploaded.status, 200);
     assert.equal(uploaded.headers.get("content-type"), "image/webp");
+    assert.equal(uploaded.headers.get("cross-origin-resource-policy"), "cross-origin");
+    const replaced = await request(`/products/${product.id}`, "PUT", { image });
+    assert.notEqual(replaced.image, product.image);
+    assert.equal((await fetch(`${origin}${product.image}`)).status, 404);
+    assert.equal((await fetch(`${origin}${replaced.image}`)).status, 200);
     assert.equal(product.name, "İğdır Çelik 🏍️");
     assert.equal((await request(`/products/${product.id}`, "PUT", { stock: 8 })).stock, 8);
 
@@ -58,6 +63,7 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
       lastAction: "Bakım", status: "Aktif", date: "2026-09-07", notes,
     }, 201);
     created.push(["/customers", customer.id]);
+    assert.match(customer.id, /^cus-[0-9a-f-]{36}$/);
     assert.equal(customer.notes, notes);
     assert.equal((await request(`/customers/${customer.id}`, "PUT", { notes: "Güncellendi" })).notes, "Güncellendi");
 
@@ -123,6 +129,7 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
       created.pop();
     }
     await request(`/products/${product.id}`, "GET", undefined, 404);
+    assert.equal((await fetch(`${origin}${replaced.image}`)).status, 404);
     await request("/auth/logout", "POST");
     await request("/customers", "GET", undefined, 401);
   } finally {

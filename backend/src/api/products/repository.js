@@ -13,6 +13,12 @@ export const productRepository = {
     });
   },
 
+  countByImage(image) {
+    return prisma.product.count({
+      where: { image },
+    });
+  },
+
   create(product) {
     return prisma.product.create({
       data: product,

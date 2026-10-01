@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,4 +22,8 @@ export async function storeProductImage(value) {
   const { writeFile } = await import("node:fs/promises");
   await writeFile(path.join(uploadDirectory, filename), output, { flag: "wx" });
   return `/uploads/${filename}`;
+}
+export async function removeProductImage(value) {
+  const match = /^\/uploads\/([a-f0-9-]+\.webp)$/.exec(value ?? "");
+  if (match) await rm(path.join(uploadDirectory, match[1]), { force: true });
 }

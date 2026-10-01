@@ -32,7 +32,8 @@ export function createApp() {
     res.json({ status: "ok", service: "meka-backend" });
   });
 
-  app.use("/uploads", express.static(uploadDirectory, { dotfiles: "deny", fallthrough: false, maxAge: "1y", immutable: true }));
+  // Product photos are public; helmet's same-origin default would block them when the storefront is on another origin.
+  app.use("/uploads", express.static(uploadDirectory, { dotfiles: "deny", fallthrough: false, maxAge: "1y", immutable: true, setHeaders: (res) => res.setHeader("Cross-Origin-Resource-Policy", "cross-origin") }));
   app.get("/api/public/products", async (req, res, next) => {
     try { res.json({ data: await prisma.product.findMany({ select: { id: true, name: true, category: true, brand: true, tag: true, image: true, compatibility: true }, orderBy: { createdAt: "desc" } }) }); }
     catch (error) { next(error); }
