@@ -14,15 +14,22 @@
     "build": "npm run build:frontend && node scripts/prepare-sites-dist.mjs",
     "build:frontend": "npm run build -w frontend",
     "build:sites": "vinext build",
+    "lint": "eslint .",
     "start:backend": "npm run start -w backend",
-    "db:up": "docker compose up -d postgres",
+    "db:up": "node scripts/local-db.mjs up",
     "db:generate": "npm run db:generate -w backend",
     "db:push": "npm run db:push -w backend",
-    "db:seed": "npm run db:seed -w backend"
+    "db:seed": "npm run db:seed -w backend",
+    "db:backup": "node scripts/local-db.mjs backup"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "concurrently": "^9.1.2",
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.1",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.3",

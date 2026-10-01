@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bike, Menu, X } from "lucide-react";
 import { business } from "../../data/business.js";
+import { assetUrl } from "../../services/apiClient.js";
 import { BRAND_ASSETS_EVENT, getBrandAssets } from "../../utils/brandAssets.js";
 
 const navItems = [
@@ -20,6 +21,19 @@ export function Header({ currentView, setView, publicPage, setPublicPage }) {
     return () => window.removeEventListener(BRAND_ASSETS_EVENT, syncBrandAssets);
   }, []);
 
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [publicPage]);
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [mobileOpen]);
+
   const navigateSite = (page = "home") => {
     setView("site");
     setPublicPage(page);
@@ -30,7 +44,7 @@ export function Header({ currentView, setView, publicPage, setPublicPage }) {
     <header className="topbar">
       <button className="brand brand-button" type="button" aria-label={business.brand} onClick={() => navigateSite("home")}>
         {brandAssets.logo ? (
-          <img className="brand-uploaded-logo" src={brandAssets.logo} alt={business.brand} />
+          <img className="brand-uploaded-logo" src={assetUrl(brandAssets.logo)} alt={business.brand} />
         ) : (
           <>
             <span className="brand-mark"><Bike size={22} /></span>
@@ -39,7 +53,7 @@ export function Header({ currentView, setView, publicPage, setPublicPage }) {
         )}
       </button>
 
-      <nav className={mobileOpen ? "nav nav-open" : "nav"}>
+      <nav id="main-navigation" className={mobileOpen ? "nav nav-open" : "nav"} aria-label="Ana menü">
         {navItems.map(([id, label]) => (
           <button
             className={currentView === "site" && publicPage === id ? "active" : ""}
@@ -52,7 +66,7 @@ export function Header({ currentView, setView, publicPage, setPublicPage }) {
         ))}
       </nav>
 
-      <button className="icon-btn menu-btn" type="button" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menü">
+      <button className="icon-btn menu-btn" type="button" onClick={() => setMobileOpen((current) => !current)} aria-label={mobileOpen ? "Menüyü kapat" : "Menüyü aç"} aria-expanded={mobileOpen} aria-controls="main-navigation">
         {mobileOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
     </header>

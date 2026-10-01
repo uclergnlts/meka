@@ -1,31 +1,20 @@
-import { useMemo, useState } from "react";
+import { api } from "../../../services/apiClient.js";
+import { useApiResource } from "../../../hooks/useApiResource.js";
+import { ResourceNotice } from "../../../components/ui/ResourceNotice.jsx";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Download, PackagePlus, RotateCcw, Save, Search } from "lucide-react";
 import { DataTable } from "../../../components/ui/DataTable.jsx";
 import { MetricCard } from "../../../components/ui/MetricCard.jsx";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
-import { products } from "../../../data/catalog.js";
-import { stockStatus } from "../../../utils/formatters.js";
 
 export function StockSection() {
-  const fallbackStockCards = products.map((product) => ({
-    productId: product.id,
-    name: product.name,
-    category: product.category,
-    stock: product.stock,
-    minStock: product.minStock,
-    status: stockStatus(product.stock, product.minStock),
-    lastMovement: "Başlangıç stoğu",
-  }));
-  const [stockCards, setStockCardsState] = useState(() => {
-    try { return JSON.parse(window.localStorage.getItem("meka-stock-cards")) ?? fallbackStockCards; } catch { return fallbackStockCards; }
-  });
-  const [movementHistory, setMovementHistory] = useState(() => {
-    try { return JSON.parse(window.localStorage.getItem("meka-stock-history")) ?? []; } catch { return []; }
-  });
+  const { data: stockCards, reload: reloadCards, error, isLoading } = useApiResource(api.stock.list, []);
+  const { data: movementHistory, reload: reloadHistory, error: historyError } = useApiResource(api.stock.history, []);
+  const [isSaving, setIsSaving] = useState(false);
   const [query, setQuery] = useState("");
   const [filterMode, setFilterMode] = useState("all");
   const [movementForm, setMovementForm] = useState({
-    productId: fallbackStockCards[0]?.productId ?? "",
+    productId: "",
     type: "in",
     quantity: "",
     note: "",
@@ -36,12 +25,11 @@ export function StockSection() {
     barcode: "",
   });
   const [historyDate, setHistoryDate] = useState("");
+  const [actionError, setActionError] = useState(null);
 
-  const setStockCards = (updater) => setStockCardsState((current) => {
-    const next = typeof updater === "function" ? updater(current) : updater;
-    window.localStorage.setItem("meka-stock-cards", JSON.stringify(next));
-    return next;
-  });
+  useEffect(() => {
+    if (!movementForm.productId && stockCards.length) setMovementForm(current => ({ ...current, productId: stockCards[0].productId }));
+  }, [stockCards, movementForm.productId]);
 
   const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
   const filteredStockCards = useMemo(() => stockCards
@@ -76,65 +64,24 @@ export function StockSection() {
     }));
   };
 
-  const saveMovement = (event) => {
+  const saveMovement = async (event) => {
     event.preventDefault();
-    const quantity = Number(movementForm.quantity);
-
-    if (!movementForm.productId || !Number.isFinite(quantity) || quantity <= 0) {
-      return;
-    }
-
-    setStockCards((current) => current.map((product) => {
-      if (product.productId !== movementForm.productId) {
-        return product;
-      }
-
-      const nextStock = movementForm.type === "out"
-        ? Math.max(0, product.stock - quantity)
-        : product.stock + quantity;
-
-      return {
-        ...product,
-        stock: nextStock,
-        status: stockStatus(nextStock, product.minStock),
-        lastMovement: `${movementForm.type === "out" ? "Çıkış" : "Giriş"}: ${quantity} adet${movementForm.note ? ` · ${movementForm.note}` : ""}`,
-        supplier: movementForm.supplier || product.supplier || "-",
-        purchasePrice: movementForm.purchasePrice || product.purchasePrice || 0,
-        salePrice: movementForm.salePrice || product.salePrice || 0,
-        shelf: movementForm.shelf || product.shelf || "-",
-        barcode: movementForm.barcode || product.barcode || "-",
-      };
-    }));
-
-    const product = stockCards.find((item) => item.productId === movementForm.productId);
-    const movement = {
-      id: `MOV-${Date.now()}`,
-      product: product?.name ?? movementForm.productId,
-      type: movementForm.type === "out" ? "Çıkış" : "Giriş",
-      quantity,
-      note: movementForm.note || "-",
-      date: new Date().toLocaleString("tr-TR"),
-      createdAt: new Date().toISOString(),
-      productId: movementForm.productId,
-    };
-    setMovementHistory((current) => {
-      const next = [movement, ...current].slice(0, 100);
-      window.localStorage.setItem("meka-stock-history", JSON.stringify(next));
-      return next;
-    });
-
-    setMovementForm((current) => ({
-      ...current,
-      quantity: "",
-      note: "",
-    }));
+    if (isSaving) return;
+    setIsSaving(true); setActionError(null);
+    try {
+      await api.stock.move(movementForm);
+      setMovementForm(current => ({ ...current, quantity: "", note: "" }));
+      await Promise.all([reloadCards(), reloadHistory()]);
+    } catch (error) { setActionError(error.message); }
+    finally { setIsSaving(false); }
   };
-
-  const undoLastMovement = () => {
+  const undoLastMovement = async () => {
     const last = movementHistory[0];
-    if (!last || !window.confirm(`${last.product} için son ${last.type.toLocaleLowerCase("tr-TR")} hareketi geri alınacak. Devam edilsin mi?`)) return;
-    setStockCards((current) => current.map((product) => product.productId === last.productId ? { ...product, stock: last.type === "Giriş" ? Math.max(0, product.stock - last.quantity) : product.stock + last.quantity } : product));
-    setMovementHistory((current) => { const next = current.slice(1); localStorage.setItem("meka-stock-history", JSON.stringify(next)); return next; });
+    if (!last || isSaving || !window.confirm(`${last.product} için son hareket geri alınacak. Devam edilsin mi?`)) return;
+    setIsSaving(true); setActionError(null);
+    try { await api.stock.reverse(last.id); await Promise.all([reloadCards(), reloadHistory()]); }
+    catch (error) { setActionError(error.message); }
+    finally { setIsSaving(false); }
   };
 
   const downloadCriticalCsv = () => {
@@ -148,11 +95,13 @@ export function StockSection() {
   return (
     <>
       <PageHeading title="Stok yönetimi" description="Minimum stok, sipariş ihtiyacı ve raf durumlarını takip edin." chip="Anlık stok" />
+      <ResourceNotice isLoading={isLoading} error={error || historyError} />
+      {actionError ? <div className="resource-notice error">{actionError}</div> : null}
       <div className="metric-grid stock-metrics">
         <MetricCard label="Toplam adet" value={totalStock} trend={`${stockCards.length} ürün grubu`} />
         <MetricCard label="Sipariş ihtiyacı" value={orderNeeded} trend="Öncelikli" />
-        <MetricCard label="Raf sağlığı" value={`%${shelfHealth}`} trend="Normal" />
-        <MetricCard label="Beklenen teslim" value="3" trend="Bu hafta" />
+        <MetricCard label="Raf sağlığı" value={`%${shelfHealth}`} trend={`${healthyCount}/${stockCards.length} ürün yeterli`} />
+        <MetricCard label="Stok hareketi" value={movementHistory.length} trend="Son 100 kayıt" />
       </div>
       <div className="admin-toolbar">
         <label className="admin-search">
@@ -198,7 +147,7 @@ export function StockSection() {
           <label>Raf konumu<input value={movementForm.shelf} onChange={(event) => updateMovementField("shelf", event.target.value)} /></label>
           <label>Barkod<input value={movementForm.barcode} onChange={(event) => updateMovementField("barcode", event.target.value)} /></label>
         </div>
-        <button className="primary-btn compact" type="submit">
+        <button className="primary-btn compact" type="submit" disabled={isSaving || isLoading || Boolean(error)}>
           <Save size={18} /> Hareketi işle
         </button>
       </form>
@@ -206,7 +155,7 @@ export function StockSection() {
         <button type="button" onClick={() => setMovementForm((current) => ({ ...current, type: "in" }))}><PackagePlus size={18} /> Stok girişi</button>
         <button type="button" onClick={() => setFilterMode("critical")}><AlertTriangle size={18} /> Kritik stok raporu</button>
         <button type="button" onClick={downloadCriticalCsv}><Download size={18} /> Kritik stok CSV</button>
-        <button type="button" onClick={undoLastMovement} disabled={!movementHistory.length}><RotateCcw size={18} /> Son hareketi geri al</button>
+        <button type="button" onClick={undoLastMovement} disabled={isSaving || !movementHistory.length}><RotateCcw size={18} /> Son hareketi geri al</button>
       </div>
       <DataTable
         title="Stok kartları"

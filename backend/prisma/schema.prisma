@@ -3,47 +3,57 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
 }
 
 model Product {
-  id            String   @id
-  name          String
-  category      String
-  brand         String
-  price         Int
+  id            String          @id
+  name          String          @db.LongText
+  category      String          @db.LongText
+  brand         String          @db.LongText
+  price         Decimal         @db.Decimal(12, 2)
   stock         Int
   minStock      Int
-  tag           String
-  image         String
-  compatibility String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  tag           String          @db.LongText
+  image         String          @db.LongText
+  supplier      String?         @db.Text
+  purchasePrice Decimal?        @db.Decimal(12, 2)
+  shelf         String?         @db.Text
+  barcode       String?         @db.Text
+  movements     StockMovement[]
+  compatibility String          @db.LongText
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   @@map("products")
 }
 
 model Customer {
-  id         String   @id
-  name       String
-  phone      String
-  motorcycle String
-  lastAction String
-  date       String
-  status     String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id              String   @id
+  name            String   @db.LongText
+  phone           String   @db.LongText
+  motorcycle      String   @db.LongText
+  lastAction      String   @db.LongText
+  date            String   @db.LongText
+  status          String   @db.LongText
+  nextMaintenance String?  @db.LongText
+  notes           String?  @db.LongText
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@map("customers")
 }
 
 model Invoice {
   id          String   @id
-  customer    String
-  description String
-  amount      Int
-  status      String
-  date        String
+  customer    String   @db.LongText
+  description String   @db.LongText
+  amount      Decimal  @db.Decimal(12, 2)
+  status      String   @db.LongText
+  date        String   @db.LongText
+  discount    Decimal  @default(0) @db.Decimal(12, 2)
+  taxRate     Decimal  @default(20) @db.Decimal(5, 2)
+  items       Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -52,10 +62,17 @@ model Invoice {
 
 model ServiceJob {
   id         String   @id
-  motorcycle String
-  operation  String
-  schedule   String
-  status     String
+  customer   String?  @db.LongText
+  phone      String?  @db.LongText
+  motorcycle String   @db.LongText
+  plate      String?  @db.LongText
+  mileage    Int?
+  operation  String   @db.LongText
+  schedule   String   @db.LongText
+  status     String   @db.LongText
+  parts      String?  @db.LongText
+  labor      Decimal? @db.Decimal(12, 2)
+  notes      String?  @db.LongText
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -64,11 +81,53 @@ model ServiceJob {
 
 model BalanceLine {
   id        String   @id
-  label     String
-  amount    Int
-  type      String
+  label     String   @db.LongText
+  amount    Decimal  @db.Decimal(12, 2)
+  type      String   @db.LongText
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("balance_lines")
+}
+
+model StockMovement {
+  id         String    @id
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  type       String    @db.VarChar(3)
+  quantity   Int
+  note       String    @db.Text
+  createdAt  DateTime  @default(now())
+  reversedAt DateTime?
+
+  @@index([createdAt])
+  @@map("stock_movements")
+}
+
+model Admin {
+  username     String         @id
+  passwordHash String         @db.VarChar(256)
+  failures     Int            @default(0)
+  lockedUntil  DateTime?
+  sessions     AdminSession[]
+
+  @@map("admins")
+}
+
+model AdminSession {
+  tokenHash String   @id @db.VarChar(64)
+  username  String
+  admin     Admin    @relation(fields: [username], references: [username], onDelete: Cascade)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@map("admin_sessions")
+}
+
+model Setting {
+  key       String   @id @db.VarChar(64)
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
 }

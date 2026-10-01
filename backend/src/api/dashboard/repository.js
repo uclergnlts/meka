@@ -6,10 +6,4 @@ export const operationRepository = {
       orderBy: { createdAt: "asc" },
     });
   },
-
-  findBalanceLines() {
-    return prisma.balanceLine.findMany({
-      orderBy: { createdAt: "asc" },
-    });
-  },
 };

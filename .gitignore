@@ -13,3 +13,8 @@ frontend/dist/
 
 .DS_Store
 npm-debug.log*
+
+backend/uploads/
+backend/.admin-login.txt
+
+backend/backups/

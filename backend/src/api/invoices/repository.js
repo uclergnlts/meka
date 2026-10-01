@@ -13,6 +13,15 @@ export const invoiceRepository = {
     });
   },
 
+  async findIdsStartingWith(prefix) {
+    const invoices = await prisma.invoice.findMany({
+      where: { id: { startsWith: prefix } },
+      select: { id: true },
+    });
+
+    return invoices.map((invoice) => invoice.id);
+  },
+
   create(invoice) {
     return prisma.invoice.create({
       data: invoice,

@@ -3,7 +3,6 @@ import { Download, Eye, Pencil, PhoneCall, Save, Search, Trash2, UserPlus, X } f
 import { DataTable } from "../../../components/ui/DataTable.jsx";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
 import { ResourceNotice } from "../../../components/ui/ResourceNotice.jsx";
-import { customers } from "../../../data/operations.js";
 import { business } from "../../../data/business.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { api } from "../../../services/apiClient.js";
@@ -20,7 +19,7 @@ const emptyCustomerForm = {
 };
 
 export function CustomersSection() {
-  const { data: customerList, setData: setCustomerList, reload, error, isLoading } = useApiResource(api.customers.list, customers);
+  const { data: customerList, setData: setCustomerList, reload, error, isLoading } = useApiResource(api.customers.list, []);
   const [query, setQuery] = useState("");
   const [form, setForm] = useState(emptyCustomerForm);
   const [editingId, setEditingId] = useState(null);
@@ -30,6 +29,7 @@ export function CustomersSection() {
   const [showCallList, setShowCallList] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [isBulkSaving, setIsBulkSaving] = useState(false);
 
   const filteredCustomers = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
@@ -51,6 +51,7 @@ export function CustomersSection() {
     "Aktif servis",
     "Teklif bekliyor",
     "Randevu alındı",
+    "Aranacak",
   ].includes(customer.status)), [customerList]);
 
   const updateField = (field, value) => {
@@ -112,6 +113,8 @@ export function CustomersSection() {
     try {
       await api.customers.delete(customerId);
       setCustomerList((current) => current.filter((customer) => customer.id !== customerId));
+      setSelectedIds((current) => current.filter((id) => id !== customerId));
+      if (selectedCustomer?.id === customerId) setSelectedCustomer(null);
       await reload();
     } catch (requestError) {
       setActionError(requestError.message);
@@ -126,15 +129,38 @@ export function CustomersSection() {
   };
 
   const reminders = customerList.filter((customer) => customer.nextMaintenance).sort((a, b) => a.nextMaintenance.localeCompare(b.nextMaintenance));
-  const bulkStatus = (status) => {
+  const bulkStatus = async (status) => {
     if (!selectedIds.length) return;
-    setCustomerList((current) => current.map((customer) => selectedIds.includes(customer.id) ? { ...customer, status } : customer));
-    setSelectedIds([]);
+    const ids = [...selectedIds];
+    setIsBulkSaving(true);
+    setActionError(null);
+    try {
+      await Promise.all(ids.map((id) => api.customers.update(id, { status })));
+      setCustomerList((current) => current.map((customer) => ids.includes(customer.id) ? { ...customer, status } : customer));
+      setSelectedIds([]);
+      await reload();
+    } catch (requestError) {
+      setActionError(requestError.message);
+    } finally {
+      setIsBulkSaving(false);
+    }
   };
-  const bulkDelete = () => {
+  const bulkDelete = async () => {
     if (!selectedIds.length || !window.confirm(`${selectedIds.length} müşteri kaydı listeden çıkarılacak. Devam edilsin mi?`)) return;
-    setCustomerList((current) => current.filter((customer) => !selectedIds.includes(customer.id)));
-    setSelectedIds([]);
+    const ids = [...selectedIds];
+    setIsBulkSaving(true);
+    setActionError(null);
+    try {
+      await Promise.all(ids.map((id) => api.customers.delete(id)));
+      setCustomerList((current) => current.filter((customer) => !ids.includes(customer.id)));
+      if (selectedCustomer && ids.includes(selectedCustomer.id)) setSelectedCustomer(null);
+      setSelectedIds([]);
+      await reload();
+    } catch (requestError) {
+      setActionError(requestError.message);
+    } finally {
+      setIsBulkSaving(false);
+    }
   };
 
   return (
@@ -191,6 +217,7 @@ export function CustomersSection() {
               <option>Teklif bekliyor</option>
               <option>Teslim edildi</option>
               <option>Randevu alındı</option>
+              <option>Aranacak</option>
             </select>
           </label>
           <label>Sonraki bakım<input type="date" value={form.nextMaintenance} onChange={(event) => updateField("nextMaintenance", event.target.value)} /></label>
@@ -204,7 +231,7 @@ export function CustomersSection() {
         <button type="button" onClick={() => setShowCallList((current) => !current)}><PhoneCall size={18} /> Aranacaklar listesi</button>
         <button type="button" onClick={downloadCsv}><Download size={18} /> Müşteri CSV</button>
       </div>
-      <div className="bulk-toolbar"><span>{selectedIds.length} kayıt seçili</span><button type="button" onClick={() => bulkStatus("Aranacak")}>Aranacak yap</button><button type="button" onClick={() => bulkStatus("Teslim edildi")}>Teslim edildi yap</button><button className="danger-text" type="button" onClick={bulkDelete}>Seçilenleri kaldır</button></div>
+      <div className="bulk-toolbar"><span>{selectedIds.length} kayıt seçili</span><button type="button" disabled={!selectedIds.length || isBulkSaving} onClick={() => bulkStatus("Aranacak")}>Aranacak yap</button><button type="button" disabled={!selectedIds.length || isBulkSaving} onClick={() => bulkStatus("Teslim edildi")}>Teslim edildi yap</button><button className="danger-text" type="button" disabled={!selectedIds.length || isBulkSaving} onClick={bulkDelete}>Seçilenleri kaldır</button></div>
       {reminders.length ? <div className="reminder-panel"><div className="form-heading"><h3>Bakım hatırlatmaları</h3><span>{reminders.length} kayıt</span></div>{reminders.slice(0, 8).map((customer) => <a href={`${business.whatsappHref}?text=${encodeURIComponent(`Merhaba ${customer.name}, ${customer.motorcycle} için yaklaşan bakımınızı hatırlatmak isteriz.`)}`} target="_blank" rel="noreferrer" key={`rem-${customer.id}`}><strong>{customer.name}</strong><span>{customer.motorcycle}</span><small>{customer.nextMaintenance}</small></a>)}</div> : null}
       {selectedCustomer ? <div className="customer-detail-card"><div className="form-heading"><h3>{selectedCustomer.name}</h3><button className="icon-action" type="button" onClick={() => setSelectedCustomer(null)}><X size={18} /></button></div><div className="customer-detail-grid"><span><small>Telefon</small><strong>{selectedCustomer.phone}</strong></span><span><small>Motosiklet</small><strong>{selectedCustomer.motorcycle}</strong></span><span><small>Son işlem</small><strong>{selectedCustomer.lastAction}</strong></span><span><small>Sonraki bakım</small><strong>{selectedCustomer.nextMaintenance || "Planlanmadı"}</strong></span><span className="wide"><small>Notlar</small><strong>{selectedCustomer.notes || "Not bulunmuyor"}</strong></span></div></div> : null}
       {showCallList ? (

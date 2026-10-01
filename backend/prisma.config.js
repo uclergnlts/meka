@@ -1,7 +1,7 @@
-import "dotenv/config";
+import "./src/config/loadEnv.js";
 import { defineConfig, env } from "prisma/config";
 
-process.env.DATABASE_URL ??= "postgresql://postgres:postgres@localhost:5432/meka?schema=public";
+process.env.DATABASE_URL ??= "mysql://meka:meka@127.0.0.1:3306/meka";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

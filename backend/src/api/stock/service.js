@@ -7,6 +7,11 @@ export const stockService = {
 
     return products.map((product) => ({
       productId: product.id,
+      supplier: product.supplier,
+      shelf: product.shelf,
+      barcode: product.barcode,
+      purchasePrice: product.purchasePrice,
+      salePrice: product.price,
       name: product.name,
       category: product.category,
       stock: product.stock,

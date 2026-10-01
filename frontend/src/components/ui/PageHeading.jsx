@@ -1,6 +1,6 @@
 import { CalendarDays } from "lucide-react";
 
-export function PageHeading({ title, description, chip = "Temmuz 2026" }) {
+export function PageHeading({ title, description, chip = new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" }).format(new Date()) }) {
   return (
     <div className="admin-heading">
       <div>

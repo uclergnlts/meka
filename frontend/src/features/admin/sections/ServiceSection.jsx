@@ -4,47 +4,37 @@ import { DataTable } from "../../../components/ui/DataTable.jsx";
 import { MetricCard } from "../../../components/ui/MetricCard.jsx";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
 import { ResourceNotice } from "../../../components/ui/ResourceNotice.jsx";
-import { serviceJobs } from "../../../data/operations.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { api } from "../../../services/apiClient.js";
+import { todayIso } from "../../../utils/formatters.js";
 
-const emptyServiceForm = {
-  customer: "",
-  phone: "",
-  motorcycle: "",
-  plate: "",
-  mileage: "",
-  operation: "",
-  schedule: new Date().toISOString().slice(0, 10),
-  status: "Planlandı",
-  parts: "",
-  labor: "",
-  notes: "",
-};
+function createEmptyServiceForm() {
+  return {
+    customer: "",
+    phone: "",
+    motorcycle: "",
+    plate: "",
+    mileage: "",
+    operation: "",
+    schedule: todayIso(),
+    status: "Planlandı",
+    parts: "",
+    labor: "",
+    notes: "",
+  };
+}
+
+const emptySummary = { todayAppointments: 0 };
 
 export function ServiceSection() {
-  const fallbackJobs = serviceJobs.map(([id, motorcycle, operation, schedule, status]) => ({ id, motorcycle, operation, schedule, status }));
-  const fallbackSummary = {
-    todayAppointments: 5,
-    waitingParts: 3,
-    readyForDelivery: 4,
-    averageDuration: "2.1 gün",
-  };
-  const [jobs, setJobsState] = useState(() => {
-    try { return JSON.parse(window.localStorage.getItem("meka-service-jobs")) ?? fallbackJobs; } catch { return fallbackJobs; }
-  });
-  const { data: summary, error: summaryError, isLoading: summaryLoading } = useApiResource(api.service.summary, fallbackSummary);
+  const { data: jobs, reload: reloadJobs, error: jobsError, isLoading: jobsLoading } = useApiResource(api.service.jobs, []);
+  const { data: summary, error: summaryError, isLoading: summaryLoading } = useApiResource(api.service.summary, emptySummary);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [form, setForm] = useState(emptyServiceForm);
+  const [form, setForm] = useState(createEmptyServiceForm);
   const [editingId, setEditingId] = useState(null);
   const [calendarMode, setCalendarMode] = useState("week");
-
-  const setJobs = (updater) => setJobsState((current) => {
-    const next = typeof updater === "function" ? updater(current) : updater;
-    window.localStorage.setItem("meka-service-jobs", JSON.stringify(next));
-    return next;
-  });
+  const [actionError, setActionError] = useState(null);
 
   const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
   const filteredJobs = useMemo(() => jobs
@@ -72,41 +62,33 @@ export function ServiceSection() {
   };
 
   const resetForm = () => {
-    setForm(emptyServiceForm);
+    setForm(createEmptyServiceForm());
     setEditingId(null);
+    setActionError(null);
   };
 
   const startEdit = (job) => {
     setEditingId(job.id);
-    setForm({ ...emptyServiceForm, ...job });
+    setForm({ ...createEmptyServiceForm(), ...job });
+    setActionError(null);
   };
 
-  const saveJob = (event) => {
+  const [isSaving, setIsSaving] = useState(false);
+  const saveJob = async (event) => {
     event.preventDefault();
-    if (editingId) {
-      setJobs((current) => current.map((job) => job.id === editingId ? { ...job, ...form } : job));
-      resetForm();
-      return;
-    }
-    const numericIds = jobs
-      .map((job) => Number(String(job.id).replace(/\D/g, "")))
-      .filter(Number.isFinite);
-    const nextId = `SRV-${Math.max(442, ...numericIds) + 1}`;
-
-    setJobs((current) => [{
-      id: nextId,
-      motorcycle: form.motorcycle,
-      operation: form.operation,
-      schedule: form.schedule,
-      status: form.status,
-    }, ...current]);
-    resetForm();
+    if (isSaving) return;
+    setIsSaving(true); setActionError(null);
+    try {
+      if (editingId) await api.service.update(editingId, form);
+      else await api.service.create(form);
+      resetForm(); await reloadJobs();
+    } catch (error) { setActionError(error.message); }
+    finally { setIsSaving(false); }
   };
-
-  const deleteJob = (job) => {
+  const deleteJob = async (job) => {
     if (!window.confirm(`“${job.id}” iş emrini silmek istediğinizden emin misiniz?`)) return;
-    setJobs((current) => current.filter((item) => item.id !== job.id));
-    if (editingId === job.id) resetForm();
+    try { await api.service.delete(job.id); if (editingId === job.id) resetForm(); await reloadJobs(); }
+    catch (error) { setActionError(error.message); }
   };
 
   const printJob = (job) => {
@@ -127,12 +109,13 @@ export function ServiceSection() {
   return (
     <>
       <PageHeading title="Servis takibi" description="Randevu, atölye durumu ve parça bekleyen işlemleri yönetin." chip="Bugün" />
-      <ResourceNotice isLoading={summaryLoading} error={summaryError} />
+      <ResourceNotice isLoading={summaryLoading || jobsLoading} error={jobsError || summaryError} />
+      {actionError ? <div className="resource-notice error">{actionError}</div> : null}
       <div className="metric-grid service-metrics">
-        <MetricCard label="Bugünkü randevu" value={summary.todayAppointments} trend={`${plannedJobs} planlı`} />
-        <MetricCard label="Parça bekleyen" value={waitingParts || summary.waitingParts} trend="Stokla eşleşecek" />
-        <MetricCard label="Teslim hazır" value={readyForDelivery || summary.readyForDelivery} trend="Müşteri aranacak" />
-        <MetricCard label="Ortalama süre" value={summary.averageDuration} trend="Servis" />
+        <MetricCard label="Planlı randevu" value={plannedJobs} trend={`${jobs.length} toplam iş`} />
+        <MetricCard label="Parça bekleyen" value={waitingParts} trend="Stokla eşleşecek" />
+        <MetricCard label="Teslim hazır" value={readyForDelivery} trend="Müşteri aranacak" />
+        <MetricCard label="Bugünkü randevu" value={summary.todayAppointments} trend="Plan tarihi bugün" />
       </div>
       <div className="admin-toolbar">
         <label className="admin-search">
@@ -181,7 +164,7 @@ export function ServiceSection() {
             </select>
           </label>
         </div>
-        <button className="primary-btn compact" type="submit">
+        <button className="primary-btn compact" type="submit" disabled={isSaving || jobsLoading || Boolean(jobsError)}>
           <Save size={18} /> Kaydet
         </button>
       </form>

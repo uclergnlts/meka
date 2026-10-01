@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useApiResource(loader, fallbackData) {
   const [data, setData] = useState(fallbackData);
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -39,15 +47,18 @@ export function useApiResource(loader, fallbackData) {
   }, [loader]);
 
   const reload = useCallback(async () => {
+    if (!mountedRef.current) return undefined;
     setStatus("loading");
     setError(null);
 
     try {
       const result = await loader();
+      if (!mountedRef.current) return result;
       setData(result);
       setStatus("success");
       return result;
     } catch (requestError) {
+      if (!mountedRef.current) throw requestError;
       setError(requestError);
       setStatus("error");
       throw requestError;

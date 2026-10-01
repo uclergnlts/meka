@@ -8,20 +8,23 @@
     "start": "node src/server.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "node prisma/seed.js"
+    "db:seed": "node prisma/seed.js",
+    "admin:create": "node scripts/create-admin.js",
+    "admin:reset-password": "node scripts/reset-admin-password.js",
+    "test:mysql": "node --test --test-force-exit tests/mysql.integration.test.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.9.0",
+    "@prisma/adapter-mariadb": "7.9.0",
     "@prisma/client": "^7.9.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "helmet": "^8.0.0",
     "morgan": "^1.10.0",
-    "pg": "^8.22.0"
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "prisma": "^7.9.0"

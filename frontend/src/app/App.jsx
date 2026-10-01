@@ -1,16 +1,19 @@
+import { AdminAccess } from "../features/admin/AdminAccess.jsx";
 import { useEffect, useState } from "react";
 import { Header } from "../components/layout/Header.jsx";
 import { PublicSite } from "../features/public/PublicSite.jsx";
 import { AdminPanel } from "../features/admin/AdminPanel.jsx";
-import { BUSINESS_SETTINGS_EVENT } from "../data/business.js";
+import { BUSINESS_SETTINGS_EVENT, applyServerBusinessSettings } from "../data/business.js";
+import { api } from "../services/apiClient.js";
+import { applyServerBrandAssets } from "../utils/brandAssets.js";
 
 const hashPages = {
   "#anasayfa": "home",
   "#home": "home",
   "#urunler": "products",
   "#products": "products",
-  "#biz-kimiz": "who",
-  "#who": "who",
+  "#biz-kimiz": "about",
+  "#who": "about",
   "#hakkimizda": "about",
   "#about": "about",
   "#iletisim": "contact",
@@ -46,6 +49,7 @@ const hashAdminSections = {
   "#panel-stock": "stock",
   "#panel-service": "service",
   "#panel-invoices": "invoices",
+  "#panel-finance": "finance",
   "#panel-customers": "customers",
   "#panel-branding": "branding",
   "#panel-settings": "settings",
@@ -61,6 +65,11 @@ export function App() {
   useEffect(() => {
     const refreshBusiness = () => setBusinessVersion((current) => current + 1);
     window.addEventListener(BUSINESS_SETTINGS_EVENT, refreshBusiness);
+    // The site still works with its built-in defaults when the settings cannot be loaded.
+    api.publicSettings().then((settings) => {
+      applyServerBusinessSettings(settings.business);
+      applyServerBrandAssets(settings.brand);
+    }).catch(() => {});
     return () => window.removeEventListener(BUSINESS_SETTINGS_EVENT, refreshBusiness);
   }, []);
 
@@ -106,7 +115,8 @@ export function App() {
     if (window.location.pathname !== path || window.location.hash) {
       window.history.pushState(null, "", path);
     }
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
   };
 
   const navigateAdminSection = (section) => {
@@ -126,11 +136,11 @@ export function App() {
 
   return (
     <div className="app">
-      <Header currentView={view} setView={navigateView} publicPage={publicPage} setPublicPage={navigatePublicPage} />
+      {view === "site" ? <Header currentView={view} setView={navigateView} publicPage={publicPage} setPublicPage={navigatePublicPage} /> : null}
       {view === "site" ? (
         <PublicSite page={publicPage} setPage={navigatePublicPage} />
       ) : (
-        <AdminPanel activeSection={adminSection} setActiveSection={navigateAdminSection} />
+        <AdminAccess><AdminPanel activeSection={adminSection} setActiveSection={navigateAdminSection} onExit={() => { navigateView("site"); navigatePublicPage("home"); }} /></AdminAccess>
       )}
     </div>
   );

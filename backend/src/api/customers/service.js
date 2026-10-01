@@ -1,8 +1,17 @@
+import { randomUUID } from "node:crypto";
 import { customerRepository } from "./repository.js";
 import { validateCustomerPayload } from "./validation.js";
 
 function createCustomerId() {
-  return `cus-${Date.now().toString(36)}`;
+  return `cus-${randomUUID()}`;
+}
+
+const allowedFields = ["name", "phone", "motorcycle", "lastAction", "date", "status", "nextMaintenance", "notes"];
+
+function normalizeCustomerPayload(payload) {
+  return Object.fromEntries(allowedFields
+    .filter((field) => payload[field] !== undefined)
+    .map((field) => [field, payload[field]]));
 }
 
 export const customerService = {
@@ -29,7 +38,7 @@ export const customerService = {
     return customerRepository.create({
       id: createCustomerId(),
       date: payload.date || "Bugün",
-      ...payload,
+      ...normalizeCustomerPayload(payload),
     });
   },
 
@@ -37,7 +46,7 @@ export const customerService = {
     validateCustomerPayload(payload, { partial: true });
     await this.getCustomer(id);
 
-    return customerRepository.update(id, payload);
+    return customerRepository.update(id, normalizeCustomerPayload(payload));
   },
 
   async deleteCustomer(id) {
