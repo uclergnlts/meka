@@ -1,15 +1,23 @@
+import { randomUUID } from "node:crypto";
 import { invoiceRepository } from "./repository.js";
 import { validateInvoicePayload } from "./validation.js";
 
 function createInvoiceId() {
-  return `FTR-${Date.now().toString().slice(-5)}`;
+  return `FTR-${randomUUID()}`;
 }
 
+const allowedFields = ["customer", "description", "amount", "status", "date", "discount", "taxRate", "items"];
+
 function normalizeInvoicePayload(payload) {
-  return {
-    ...payload,
-    amount: Number(payload.amount),
-  };
+  const normalized = Object.fromEntries(allowedFields
+    .filter((field) => payload[field] !== undefined)
+    .map((field) => [field, payload[field]]));
+
+  ["amount", "discount", "taxRate"].forEach((field) => {
+    if (normalized[field] !== undefined) normalized[field] = Number(normalized[field]);
+  });
+
+  return normalized;
 }
 
 export const invoiceService = {
@@ -19,8 +27,8 @@ export const invoiceService = {
 
   async getSummary() {
     const invoices = await invoiceRepository.findAll();
-    const paidTotal = invoices.filter((invoice) => invoice.status === "Ödendi").reduce((total, invoice) => total + invoice.amount, 0);
-    const pendingTotal = invoices.filter((invoice) => invoice.status !== "Ödendi").reduce((total, invoice) => total + invoice.amount, 0);
+    const paidTotal = invoices.filter((invoice) => invoice.status === "Ödendi").reduce((total, invoice) => total + Number(invoice.amount), 0);
+    const pendingTotal = invoices.filter((invoice) => invoice.status !== "Ödendi").reduce((total, invoice) => total + Number(invoice.amount), 0);
 
     return {
       paidTotal,

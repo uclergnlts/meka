@@ -10,6 +10,7 @@ const storageKeys = [
   "meka-stock-cards",
   "meka-stock-history",
 ];
+const MAX_BACKUP_SIZE = 10 * 1024 * 1024;
 
 function downloadFile(content, filename, type) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -37,8 +38,14 @@ export function BackupSection() {
     setError("");
     setNotice("");
     try {
+      if (file.size > MAX_BACKUP_SIZE) throw new Error("Yedek dosyası en fazla 10 MB olabilir.");
       const backup = JSON.parse(await file.text());
-      if (backup?.application !== "MEKA Moto Garage" || backup?.version !== 1 || typeof backup.data !== "object") throw new Error("Geçerli bir MEKA panel yedeği seçin.");
+      if (backup?.application !== "MEKA Moto Garage" || backup?.version !== 1 || !backup.data || typeof backup.data !== "object" || Array.isArray(backup.data)) throw new Error("Geçerli bir MEKA panel yedeği seçin.");
+      storageKeys.forEach((key) => {
+        const value = backup.data[key];
+        if (value !== null && value !== undefined && typeof value !== "string") throw new Error("Yedek dosyasında geçersiz veri bulundu.");
+        if (typeof value === "string") JSON.parse(value);
+      });
       if (!window.confirm("Mevcut yerel panel verileri yedekteki verilerle değiştirilecek. Devam edilsin mi?")) return;
       storageKeys.forEach((key) => {
         const value = backup.data[key];
@@ -61,7 +68,7 @@ export function BackupSection() {
 
   return (
     <>
-      <PageHeading title="Yedekleme ve aktarım" description="Sunucusuz panel verilerini tek dosyada yedekleyin veya başka bir tarayıcıya aktarın." chip="Yerel veri" />
+      <PageHeading title="Yedekleme ve aktarım" description="Bu tarayıcıdaki ayarları ve önceki yerel kayıtları yedekleyin." chip="Yerel veri" />
       {error ? <div className="resource-notice error">{error}</div> : null}
       {notice ? <div className="resource-notice success">{notice}</div> : null}
       <div className="backup-grid">
@@ -69,7 +76,7 @@ export function BackupSection() {
         <article className="backup-card"><Upload size={28} /><div><h2>Yedeği geri yükle</h2><p>Daha önce indirilen MEKA panel yedeğini bu tarayıcıya aktarır.</p><label className="outline-btn upload-button"><Upload size={17} /> Yedek seç<input type="file" accept="application/json,.json" onChange={(event) => importBackup(event.target.files?.[0])} /></label></div></article>
         <article className="backup-card danger-card"><RotateCcw size={28} /><div><h2>Yerel verileri sıfırla</h2><p>Yalnızca bu tarayıcıda tutulan panel verilerini temizler ve varsayılan görünüme döner.</p><button className="outline-btn danger-outline" type="button" onClick={resetLocalData}><RotateCcw size={17} /> Yerel verileri temizle</button></div></article>
       </div>
-      <div className="backup-note"><strong>Önemli:</strong> Bu yedek sunucu veritabanındaki müşteri ve fatura kayıtlarını içermez. Canlı sisteme geçildiğinde sunucu yedeklemesi ayrıca kurulacaktır.</div>
+      <div className="backup-note"><strong>Önemli:</strong> Bu dosya MySQL kayıtlarını ve sunucuya yüklenen fotoğrafları içermez. Tam yedek için veritabanı ve uploads klasörü birlikte yedeklenmelidir.</div>
     </>
   );
 }

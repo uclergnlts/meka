@@ -1,3 +1,4 @@
+import { AdminAccess } from "../features/admin/AdminAccess.jsx";
 import { useEffect, useState } from "react";
 import { Header } from "../components/layout/Header.jsx";
 import { PublicSite } from "../features/public/PublicSite.jsx";
@@ -9,8 +10,8 @@ const hashPages = {
   "#home": "home",
   "#urunler": "products",
   "#products": "products",
-  "#biz-kimiz": "who",
-  "#who": "who",
+  "#biz-kimiz": "about",
+  "#who": "about",
   "#hakkimizda": "about",
   "#about": "about",
   "#iletisim": "contact",
@@ -106,7 +107,8 @@ export function App() {
     if (window.location.pathname !== path || window.location.hash) {
       window.history.pushState(null, "", path);
     }
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
   };
 
   const navigateAdminSection = (section) => {
@@ -126,11 +128,11 @@ export function App() {
 
   return (
     <div className="app">
-      <Header currentView={view} setView={navigateView} publicPage={publicPage} setPublicPage={navigatePublicPage} />
+      {view === "site" ? <Header currentView={view} setView={navigateView} publicPage={publicPage} setPublicPage={navigatePublicPage} /> : null}
       {view === "site" ? (
         <PublicSite page={publicPage} setPage={navigatePublicPage} />
       ) : (
-        <AdminPanel activeSection={adminSection} setActiveSection={navigateAdminSection} />
+        <AdminAccess><AdminPanel activeSection={adminSection} setActiveSection={navigateAdminSection} onExit={() => { navigateView("site"); navigatePublicPage("home"); }} /></AdminAccess>
       )}
     </div>
   );

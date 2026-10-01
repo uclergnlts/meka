@@ -1,15 +1,5 @@
-import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { prisma } from "../src/lib/prisma.js";
 import { balanceLines, customers, invoices, products, serviceJobs } from "../src/data/seedData.js";
-
-process.env.DATABASE_URL ??= "postgresql://postgres:postgres@localhost:5432/meka?schema=public";
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-});
-
-const prisma = new PrismaClient({ adapter });
 
 async function main() {
   await prisma.product.createMany({

@@ -5,9 +5,9 @@ import { PageHeading } from "../../../components/ui/PageHeading.jsx";
 import { ResourceNotice } from "../../../components/ui/ResourceNotice.jsx";
 import { products } from "../../../data/catalog.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
-import { api } from "../../../services/apiClient.js";
+import { api, assetUrl } from "../../../services/apiClient.js";
 import { formatCurrency } from "../../../utils/formatters.js";
-import { getProductImages, readProductImage, saveProductImage } from "../../../utils/productImages.js";
+import { readProductImage } from "../../../utils/productImages.js";
 
 const emptyProductForm = {
   name: "",
@@ -71,7 +71,7 @@ export function ProductsSection() {
       image: product.image,
       compatibility: product.compatibility,
     });
-    setProductImage(getProductImages()[product.id] ?? null);
+    setProductImage(product.image?.startsWith("/uploads/") || product.image?.startsWith("data:") ? product.image : null);
   };
 
   const selectProductImage = async (file) => {
@@ -90,14 +90,15 @@ export function ProductsSection() {
     setActionError(null);
 
     try {
+      const payload = { ...form, image: productImage || "brake" };
       if (editingId) {
-        const updatedProduct = await api.products.update(editingId, form);
+        const updatedProduct = await api.products.update(editingId, payload);
         setProductList((current) => current.map((product) => product.id === editingId ? updatedProduct : product));
-        saveProductImage(editingId, productImage);
+
       } else {
-        const createdProduct = await api.products.create(form);
+        const createdProduct = await api.products.create(payload);
         setProductList((current) => [createdProduct, ...current]);
-        saveProductImage(createdProduct.id, productImage);
+
       }
 
       resetForm();
@@ -186,7 +187,7 @@ export function ProductsSection() {
           </label>
         </div>
         <div className="product-image-editor">
-          <div className="product-image-preview">{productImage ? <img src={productImage} alt="Ürün görseli önizlemesi" /> : <Image size={32} />}</div>
+          <div className="product-image-preview">{productImage ? <img src={assetUrl(productImage)} alt="Ürün görseli önizlemesi" /> : <Image size={32} />}</div>
           <div><strong>Ürün görseli</strong><p>PNG, JPG veya WebP; en fazla 1 MB.</p><label className="outline-btn upload-button"><Upload size={17} /> Görsel seç<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => selectProductImage(event.target.files?.[0])} /></label>{productImage ? <button className="text-danger-button" type="button" onClick={() => setProductImage(null)}>Görseli kaldır</button> : null}</div>
         </div>
         <button className="primary-btn compact" type="submit" disabled={isSaving}>

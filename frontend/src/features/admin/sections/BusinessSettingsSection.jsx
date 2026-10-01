@@ -13,21 +13,35 @@ const fields = [
 export function BusinessSettingsSection() {
   const [form, setForm] = useState(() => ({ ...business }));
   const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
 
   const save = (event) => {
     event.preventDefault();
-    saveBusinessSettings(form);
-    setNotice("İşletme bilgileri siteye uygulandı.");
+    try {
+      saveBusinessSettings(form);
+      setError("");
+      setNotice("İşletme bilgileri siteye uygulandı.");
+    } catch {
+      setNotice("");
+      setError("İşletme bilgileri tarayıcıya kaydedilemedi.");
+    }
   };
 
   const reset = () => {
-    setForm(resetBusinessSettings());
-    setNotice("Varsayılan işletme bilgilerine dönüldü.");
+    try {
+      setForm(resetBusinessSettings());
+      setError("");
+      setNotice("Varsayılan işletme bilgilerine dönüldü.");
+    } catch {
+      setNotice("");
+      setError("Varsayılan ayarlara dönülemedi.");
+    }
   };
 
   return (
     <>
       <PageHeading title="İşletme ayarları" description="Kullanıcı sitesinde gösterilen iletişim ve işletme bilgilerini yönetin." chip="Site" />
+      {error ? <div className="resource-notice error">{error}</div> : null}
       {notice ? <div className="resource-notice success">{notice}</div> : null}
       <form className="admin-form" onSubmit={save}>
         <div className="form-grid">

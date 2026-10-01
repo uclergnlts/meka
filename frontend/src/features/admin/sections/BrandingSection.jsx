@@ -52,12 +52,17 @@ export function BrandingSection() {
   };
 
   const reset = () => {
-    const emptyAssets = {};
-    setAssets(emptyAssets);
-    saveBrandAssets(emptyAssets);
-    document.querySelector('link[rel="icon"]')?.remove();
-    setError("");
-    setNotice("Varsayılan MEKA görünümüne dönüldü.");
+    try {
+      const emptyAssets = {};
+      setAssets(emptyAssets);
+      saveBrandAssets(emptyAssets);
+      document.querySelector('link[rel="icon"]')?.remove();
+      setError("");
+      setNotice("Varsayılan MEKA görünümüne dönüldü.");
+    } catch {
+      setNotice("");
+      setError("Logo ayarları sıfırlanamadı.");
+    }
   };
 
   return (

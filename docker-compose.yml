@@ -1,21 +1,22 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: meka-postgres
+  mysql:
+    image: mysql:8.4
+    container_name: meka-mysql
     restart: unless-stopped
     environment:
-      POSTGRES_DB: meka
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      MYSQL_DATABASE: meka
+      MYSQL_USER: meka
+      MYSQL_PASSWORD: meka
+      MYSQL_ROOT_PASSWORD: meka-local-root
     ports:
-      - "5432:5432"
+      - "127.0.0.1:3306:3306"
     volumes:
-      - meka-postgres-data:/var/lib/postgresql/data
+      - meka-mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d meka"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
 
 volumes:
-  meka-postgres-data:
+  meka-mysql-data:

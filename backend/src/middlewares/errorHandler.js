@@ -4,17 +4,45 @@ export function errorHandler(error, req, res, next) {
     return;
   }
 
-  if (error.code === "P1001" || error.code === "ECONNREFUSED" || error.message?.includes("Can't reach database server")) {
+  const driverCause = error.meta?.driverAdapterError?.cause;
+  const mysqlPoolUnavailable = driverCause?.kind === "mysql" && Number(driverCause.code) === 45028;
+
+  if (mysqlPoolUnavailable || error.code === "P1001" || error.code === "ECONNREFUSED" || error.message?.includes("Can't reach database server")) {
     res.status(503).json({
       error: "DATABASE_UNAVAILABLE",
-      message: "Veritabanına bağlanılamadı. PostgreSQL çalışıyor mu ve DATABASE_URL doğru mu kontrol edin.",
+      message: "Veritabanına bağlanılamadı. MySQL çalışıyor mu ve DATABASE_URL doğru mu kontrol edin.",
     });
     return;
   }
 
-  res.status(error.statusCode ?? 500).json({
-    error: error.code ?? "INTERNAL_SERVER_ERROR",
-    message: error.message ?? "Beklenmeyen bir hata oluştu.",
-    details: error.details,
+  if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
+    res.status(400).json({
+      error: "INVALID_JSON",
+      message: "İstek gövdesi geçerli JSON biçiminde olmalıdır.",
+    });
+    return;
+  }
+
+  if (error.code === "P2003") return res.status(409).json({ error: "RECORD_IN_USE", message: "Stok geçmişi bulunan ürün silinemez." });
+  if (error.code === "P2025") return res.status(404).json({ error: "NOT_FOUND", message: "Kayıt bulunamadı." });
+  if (error.code === "P2002") {
+    res.status(409).json({
+      error: "DUPLICATE_RECORD",
+      message: "Aynı benzersiz bilgiyle kayıt zaten mevcut.",
+    });
+    return;
+  }
+
+  const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 500;
+  const isOperationalError = statusCode >= 400 && statusCode < 500;
+
+  if (!isOperationalError) {
+    console.error(error);
+  }
+
+  res.status(statusCode).json({
+    error: isOperationalError ? error.code ?? "REQUEST_FAILED" : "INTERNAL_SERVER_ERROR",
+    message: isOperationalError ? error.message : "Beklenmeyen bir hata oluştu.",
+    ...(isOperationalError && error.details ? { details: error.details } : {}),
   });
 }

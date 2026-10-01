@@ -7,12 +7,13 @@ export const serviceService = {
 
   async getSummary() {
     const jobs = await serviceRepository.findJobs();
+    const today = new Date().toISOString().slice(0, 10);
 
     return {
-      todayAppointments: 5,
+      todayAppointments: jobs.filter((job) => job.schedule === today || job.schedule.startsWith("Bugün")).length,
       waitingParts: jobs.filter((job) => job.status === "Parça bekliyor").length,
-      readyForDelivery: 4,
-      averageDuration: "2.1 gün",
+      readyForDelivery: jobs.filter((job) => job.status === "Teslim hazır").length,
+      averageDuration: "-",
     };
   },
 };

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { BarChart3, Boxes, DatabaseBackup, Image, PackageCheck, ReceiptText, Settings, Users, Wrench } from "lucide-react";
+import { ArrowUpRight, BarChart3, Bike, Boxes, DatabaseBackup, Image, PackageCheck, ReceiptText, Settings, Users, Wrench } from "lucide-react";
 import { AdminSidebar } from "./components/AdminSidebar.jsx";
 import { DashboardSection } from "./sections/DashboardSection.jsx";
 import { ProductsSection } from "./sections/ProductsSection.jsx";
@@ -23,7 +23,7 @@ export const adminSections = [
   { id: "backup", label: "Yedek", icon: DatabaseBackup },
 ];
 
-export function AdminPanel({ activeSection, setActiveSection }) {
+export function AdminPanel({ activeSection, setActiveSection, onExit }) {
   const ActiveComponent = useMemo(() => {
     const sections = {
       dashboard: DashboardSection,
@@ -41,11 +41,12 @@ export function AdminPanel({ activeSection, setActiveSection }) {
   }, [activeSection]);
 
   return (
-    <main className="admin-shell">
-      <AdminSidebar activeSection={activeSection} setActiveSection={setActiveSection} sections={adminSections} />
-      <section className="admin-content">
-        <ActiveComponent />
-      </section>
-    </main>
+    <div className="admin-app">
+      <header className="admin-topbar"><div><span className="admin-topbar-mark"><Bike size={20} /></span><span><strong>MEKA</strong><small>Yönetim Merkezi</small></span></div><button type="button" onClick={onExit}>Siteyi görüntüle <ArrowUpRight size={17} /></button></header>
+      <main className="admin-shell">
+        <AdminSidebar activeSection={activeSection} setActiveSection={setActiveSection} sections={adminSections} />
+        <section className="admin-content"><div className="admin-content-inner"><ActiveComponent /></div></section>
+      </main>
+    </div>
   );
 }

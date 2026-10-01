@@ -15,10 +15,11 @@
     "build:frontend": "npm run build -w frontend",
     "build:sites": "vinext build",
     "start:backend": "npm run start -w backend",
-    "db:up": "docker compose up -d postgres",
+    "db:up": "node scripts/local-db.mjs up",
     "db:generate": "npm run db:generate -w backend",
     "db:push": "npm run db:push -w backend",
-    "db:seed": "npm run db:seed -w backend"
+    "db:seed": "npm run db:seed -w backend",
+    "db:backup": "node scripts/local-db.mjs backup"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

@@ -1,6 +1,6 @@
 export function ResourceNotice({ isLoading, error }) {
   if (isLoading) {
-    return <div className="resource-notice">Veriler yükleniyor...</div>;
+    return <div className="resource-notice loading" role="status"><span className="loading-dot" /> Veriler yükleniyor...</div>;
   }
 
   if (error) {
