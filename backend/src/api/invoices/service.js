@@ -1,9 +1,14 @@
-import { randomUUID } from "node:crypto";
 import { invoiceRepository } from "./repository.js";
 import { validateInvoicePayload } from "./validation.js";
 
-function createInvoiceId() {
-  return `FTR-${randomUUID()}`;
+// Invoice numbers are short and count up within the year: 2026-001, 2026-002, …
+// Older invoices keep whatever number they were created with.
+async function nextInvoiceId() {
+  const year = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul", year: "numeric" }).format(new Date());
+  const ids = await invoiceRepository.findIdsStartingWith(`${year}-`);
+  const last = Math.max(0, ...ids.map((id) => Number(/^\d{4}-(\d+)$/.exec(id)?.[1] ?? 0)));
+
+  return `${year}-${String(last + 1).padStart(3, "0")}`;
 }
 
 const allowedFields = ["customer", "description", "amount", "status", "date", "discount", "taxRate", "items"];
@@ -53,11 +58,16 @@ export const invoiceService = {
 
   async createInvoice(payload) {
     validateInvoicePayload(payload);
+    const invoice = normalizeInvoicePayload(payload);
 
-    return invoiceRepository.create({
-      id: createInvoiceId(),
-      ...normalizeInvoicePayload(payload),
-    });
+    // Two invoices saved at the same moment would pick the same number; the loser retries with the next one.
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await invoiceRepository.create({ id: await nextInvoiceId(), ...invoice });
+      } catch (error) {
+        if (error.code !== "P2002" || attempt === 3) throw error;
+      }
+    }
   },
 
   async updateInvoice(id, payload) {

@@ -86,6 +86,7 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
       date: "2026-09-07", items,
     }, 201);
     created.push(["/invoices", invoice.id]);
+    assert.match(invoice.id, /^\d{4}-\d{3,}$/);
     assert.deepEqual(invoice.items, items);
     const updated = await request(`/invoices/${invoice.id}`, "PUT", { items: [], discount: 10 });
     assert.deepEqual(updated.items, []);
@@ -95,6 +96,12 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
     const before = (await request("/dashboard/summary")).metrics;
     const paid = await request("/invoices", "POST", { customer: "Çağrı Şen", description: "Ödenen", amount: "150.10", status: "Ödendi", date: "2026-09-07" }, 201);
     created.push(["/invoices", paid.id]);
+    // Numbers count up within the year, also when two invoices are saved at the same moment.
+    const [invoiceYear, invoiceNumber] = invoice.id.split("-");
+    assert.equal(paid.id, `${invoiceYear}-${String(Number(invoiceNumber) + 1).padStart(3, "0")}`);
+    const sameMoment = await Promise.all([1, 2].map(() => request("/invoices", "POST", { customer: "Test", description: "Aynı an", amount: 1, status: "Taslak", date: "2026-09-07" }, 201)));
+    sameMoment.forEach((row) => created.push(["/invoices", row.id]));
+    assert.deepEqual(sameMoment.map((row) => Number(row.id.split("-")[1])).sort((a, b) => a - b), [Number(invoiceNumber) + 2, Number(invoiceNumber) + 3]);
     const incomeLine = await request("/balance", "POST", { label: "Hurda satışı", amount: "49.90", type: "Gelir" }, 201);
     created.push(["/balance", incomeLine.id]);
     const expenseLine = await request("/balance", "POST", { label: "Kira", amount: 80, type: "Gider" }, 201);

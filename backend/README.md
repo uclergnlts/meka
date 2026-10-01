@@ -77,6 +77,8 @@ site alt alanlarında bulunmalıdır; farklı siteler SameSite=Strict ile destek
   bir veritabanıyla (ör. `meka_review`) paneli çalıştıracaksanız ayrı `UPLOAD_DIR` verin.
 - Para alanları DECIMAL(12,2), vergi DECIMAL(5,2). JSON'da ondalık değerler metin
   olarak dönebilir. TL gösterimi iki ondalık basamak içerir.
+- Yeni faturalar yıl içinde sıralı kısa numara alır (2026-001, 2026-002, …); eski
+  faturaların numarası değişmez.
 - Kalemsiz eski fatura düzenlenirken mevcut toplam vergi dahil tek kaleme alınır,
   tekrar vergi uygulanmaz.
 - localhost:3000 tarayıcı depolaması Chrome “Üçler” ve “60” profillerinde
