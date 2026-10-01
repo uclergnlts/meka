@@ -34,6 +34,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm run db:generate
       - run: npm run db:push
       - run: npm run test:mysql -w backend

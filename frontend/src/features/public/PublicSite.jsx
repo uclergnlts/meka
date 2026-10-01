@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Boxes,
   CalendarClock,
@@ -530,15 +530,5 @@ function ContactRow({ icon, label, value, href }) {
     </a>
   ) : (
     <div className="contact-row">{content}</div>
-  );
-}
-
-function Stat({ icon, value, label }) {
-  return (
-    <div className="stat">
-      {icon}
-      <strong>{value}</strong>
-      <span>{label}</span>
-    </div>
   );
 }
