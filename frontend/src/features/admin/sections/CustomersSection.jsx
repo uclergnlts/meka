@@ -3,7 +3,6 @@ import { Download, Eye, Pencil, PhoneCall, Save, Search, Trash2, UserPlus, X } f
 import { DataTable } from "../../../components/ui/DataTable.jsx";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
 import { ResourceNotice } from "../../../components/ui/ResourceNotice.jsx";
-import { customers } from "../../../data/operations.js";
 import { business } from "../../../data/business.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { api } from "../../../services/apiClient.js";
@@ -20,7 +19,7 @@ const emptyCustomerForm = {
 };
 
 export function CustomersSection() {
-  const { data: customerList, setData: setCustomerList, reload, error, isLoading } = useApiResource(api.customers.list, customers);
+  const { data: customerList, setData: setCustomerList, reload, error, isLoading } = useApiResource(api.customers.list, []);
   const [query, setQuery] = useState("");
   const [form, setForm] = useState(emptyCustomerForm);
   const [editingId, setEditingId] = useState(null);

@@ -5,10 +5,9 @@ import { DataTable } from "../../../components/ui/DataTable.jsx";
 import { MetricCard } from "../../../components/ui/MetricCard.jsx";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
 import { ResourceNotice } from "../../../components/ui/ResourceNotice.jsx";
-import { invoices } from "../../../data/operations.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { api } from "../../../services/apiClient.js";
-import { formatCurrency } from "../../../utils/formatters.js";
+import { formatCurrency, todayIso } from "../../../utils/formatters.js";
 
 function createEmptyInvoiceForm() {
   return {
@@ -16,7 +15,7 @@ function createEmptyInvoiceForm() {
     description: "",
     amount: "",
     status: "Taslak",
-    date: new Date().toISOString().slice(0, 10),
+    date: todayIso(),
     discount: "0",
     taxRate: "20",
     items: [{ description: "", quantity: 1, unitPrice: "" }],
@@ -34,7 +33,7 @@ function escapeHtml(value) {
 }
 
 export function InvoicesSection() {
-  const { data: invoiceList, setData: setInvoiceList, reload: reloadInvoices, error: listError, isLoading: listLoading } = useApiResource(api.invoices.list, invoices);
+  const { data: invoiceList, setData: setInvoiceList, reload: reloadInvoices, error: listError, isLoading: listLoading } = useApiResource(api.invoices.list, []);
   const [query, setQuery] = useState("");
   const [form, setForm] = useState(createEmptyInvoiceForm);
   const [editingId, setEditingId] = useState(null);
@@ -156,7 +155,7 @@ export function InvoicesSection() {
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = `meka-fatura-raporu-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `meka-fatura-raporu-${todayIso()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };

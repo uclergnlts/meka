@@ -6,6 +6,7 @@ import { PageHeading } from "../../../components/ui/PageHeading.jsx";
 import { ResourceNotice } from "../../../components/ui/ResourceNotice.jsx";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { api } from "../../../services/apiClient.js";
+import { todayIso } from "../../../utils/formatters.js";
 
 function createEmptyServiceForm() {
   return {
@@ -15,7 +16,7 @@ function createEmptyServiceForm() {
     plate: "",
     mileage: "",
     operation: "",
-    schedule: new Date().toISOString().slice(0, 10),
+    schedule: todayIso(),
     status: "Planlandı",
     parts: "",
     labor: "",

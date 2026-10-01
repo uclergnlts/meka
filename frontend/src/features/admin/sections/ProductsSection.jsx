@@ -3,7 +3,6 @@ import { Image, Pencil, Plus, Save, Search, Trash2, Upload, X } from "lucide-rea
 import { DataTable } from "../../../components/ui/DataTable.jsx";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
 import { ResourceNotice } from "../../../components/ui/ResourceNotice.jsx";
-import { products } from "../../../data/catalog.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { api, assetUrl } from "../../../services/apiClient.js";
 import { formatCurrency } from "../../../utils/formatters.js";
@@ -22,7 +21,7 @@ const emptyProductForm = {
 };
 
 export function ProductsSection() {
-  const { data: productList, setData: setProductList, reload, error, isLoading } = useApiResource(api.products.list, products);
+  const { data: productList, setData: setProductList, reload, error, isLoading } = useApiResource(api.products.list, []);
   const [query, setQuery] = useState("");
   const [form, setForm] = useState(emptyProductForm);
   const [editingId, setEditingId] = useState(null);

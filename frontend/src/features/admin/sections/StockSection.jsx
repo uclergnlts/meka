@@ -101,7 +101,7 @@ export function StockSection() {
         <MetricCard label="Toplam adet" value={totalStock} trend={`${stockCards.length} ürün grubu`} />
         <MetricCard label="Sipariş ihtiyacı" value={orderNeeded} trend="Öncelikli" />
         <MetricCard label="Raf sağlığı" value={`%${shelfHealth}`} trend="Normal" />
-        <MetricCard label="Beklenen teslim" value="3" trend="Bu hafta" />
+        <MetricCard label="Stok hareketi" value={movementHistory.length} trend="Son 100 kayıt" />
       </div>
       <div className="admin-toolbar">
         <label className="admin-search">
