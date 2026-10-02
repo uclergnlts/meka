@@ -16,8 +16,13 @@ npm run db:up
 npm run dev
 ```
 
-Site: http://localhost:3000/ — Panel: http://localhost:3000/#panel
+Site: http://localhost:3000/ — Panel: http://admin.localhost:3000/
 API: http://localhost:4000/health
+
+Panel yalnızca `admin.` ile başlayan alan adında açılır (yerelde `admin.localhost`,
+canlıda `admin.<alan adı>`). Sitede panele giden bağlantı yoktur ve site adresinde
+`#panel` yazmak paneli açmaz. `admin.localhost` Chrome ve Firefox'ta ek ayar
+gerektirmez; Safari'de `/etc/hosts` dosyasına eklenmesi gerekir.
 
 `db:up`, Docker Desktop çalışırken MySQL'i başlatır ve sağlıklı olmasını bekler.
 macOS'ta Docker CLI PATH'te olmasa da standart Docker Desktop konumu kullanılır.
@@ -119,7 +124,9 @@ karşılaştırılmıştır; bu komut yerel sabit `meka_before_verify`/`meka` ad
    Uzak sunucuda bağlantı TLS'siz ise ve `ER_CANNOT_RETRIEVE_RSA_KEY` hatası çıkarsa
    TLS açın veya URL'ye `?allowPublicKeyRetrieval=true` ekleyin.
 3. `NODE_ENV=production`, `FRONTEND_ORIGIN`, `PORT`, kalıcı `UPLOAD_DIR` ve vekil
-   arkasındaysa `TRUST_PROXY` ayarlayın.
+   arkasındaysa `TRUST_PROXY` ayarlayın. Panel için `admin.<alan adı>` DNS kaydını aynı
+   siteye yönlendirin ve `FRONTEND_ORIGIN` içine iki adresi de virgülle yazın
+   (ör. `https://ornek.com,https://admin.ornek.com`).
 4. Yerel son SQL yedeğini ve uploads arşivini aktarın; üretim frontend derlemesini
    hazırlayın. `VITE_API_BASE_URL` yalnızca API farklı origin'deyse gerekir.
 5. HTTPS, cookie, public ürünler, yönetici girişi ve kayıt işlemlerini doğrulayın.

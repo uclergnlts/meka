@@ -15,7 +15,8 @@ if (!Number.isInteger(trustProxy) || trustProxy < 0) {
 export const env = {
   port: parsedPort,
   trustProxy,
-  frontendOrigins: (process.env.FRONTEND_ORIGIN ?? "http://localhost:3000")
+  // The panel is served from the admin.<domain> host, so that origin has to be listed too.
+  frontendOrigins: (process.env.FRONTEND_ORIGIN ?? "http://localhost:3000,http://admin.localhost:3000")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),
