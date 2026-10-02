@@ -37,8 +37,8 @@ export function PublicSite({ page, setPage }) {
         {(page === "who" || page === "about") && <AboutPage />}
         {page === "contact" && <ContactPage />}
         {page === "faq" && <FaqPage />}
-        {page === "kvkk" && <LegalPage type="kvkk" />}
-        {page === "privacy" && <LegalPage type="privacy" />}
+        {page === "kvkk" && <LegalPage type="kvkk" setPage={setPage} />}
+        {page === "privacy" && <LegalPage type="privacy" setPage={setPage} />}
       </main>
       <a className="floating-whatsapp" href={business.whatsappHref} target="_blank" rel="noreferrer" aria-label="WhatsApp üzerinden iletişime geç">
         <MessageCircle size={23} />
@@ -808,61 +808,127 @@ const faqItems = [
   ["Simav köylerine veya çevre ilçelere parça gönderimi yapıyor musunuz?", "Evet. Hisarcık, Gediz, Emet veya Simav'ın köylerinden gelen parça taleplerinde; WhatsApp'tan parçayı teyit edip kargo ya da Simav merkezden elden teslimat ile ulaştırabiliyoruz."],
 ];
 
-function FaqPage() {
+// Shared header of the FAQ and legal pages: the same stamp bar and dark band as the other pages, kept short.
+function InfoHero({ code, label, title, children }) {
   return (
-    <section className="legal-page page-section faq-page">
-      <span className="eyebrow">Yardım</span>
-      <h1>Sıkça sorulan sorular</h1>
-      <p className="legal-lead">Servis, ürün ve parça süreçleriyle ilgili en sık sorulan soruların kısa yanıtları.</p>
-      <div className="faq-list">
-        {faqItems.map(([question, answer]) => (
-          <details key={question}>
-            <summary>{question}</summary>
-            <p>{answer}</p>
-          </details>
-        ))}
+    <section className="info-hero">
+      <div className="hero-stamp-bar">
+        <span className="stamp-code">{code}</span>
+        <span className="stamp-divider">|</span>
+        <span className="stamp-text">{label}</span>
       </div>
+      <h1>{title}</h1>
+      <p>{children}</p>
     </section>
   );
 }
 
-function LegalPage({ type }) {
-  const isKvkk = type === "kvkk";
+function InfoHelp({ title, children }) {
   return (
-    <section className="legal-page page-section">
-      <span className="eyebrow">Yasal bilgilendirme</span>
-      <h1>{isKvkk ? "KVKK Aydınlatma Metni" : "Gizlilik Politikası"}</h1>
-      <p className="legal-lead">Son güncelleme: 29 Ağustos 2026</p>
-      {isKvkk ? (
-        <div className="legal-copy">
-          <h2>Veri sorumlusu</h2>
-          <p>6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında veri sorumlusu; {business.address}, {business.city} adresinde faaliyet gösteren, işletme unvanı {business.brand} ve işletme sahibi {business.legalOperator} olan işletmedir.</p>
-          <h2>İşletmenin faaliyet alanı</h2>
-          <p>İşletmenin ruhsatta kayıtlı faaliyet konusu “{business.licensedActivity}”dır. İşletme, {business.licenseAuthority} tarafından {business.licenseIssueDate} tarihinde düzenlenen işyeri açma ve çalışma ruhsatıyla faaliyet göstermektedir.</p>
-          <h2>İşlenen veriler ve amaçlar</h2>
-          <p>Telefon, e-posta, WhatsApp veya Instagram üzerinden bizimle iletişim kurmanız hâlinde paylaştığınız ad-soyad, telefon, e-posta, motosiklet ve talep bilgileri; talebinizi yanıtlamak, ürün ve parça uygunluğunu değerlendirmek, sipariş veya müşteri iletişim sürecini yürütmek, muhasebe kayıtlarını oluşturmak ve yasal yükümlülükleri yerine getirmek amacıyla işlenebilir.</p>
-          <h2>Toplama yöntemi ve hukuki sebep</h2>
-          <p>Veriler mağaza ziyareti, telefon görüşmesi, e-posta, WhatsApp, Instagram ve internet sitesindeki iletişim bağlantıları üzerinden sözlü, yazılı veya elektronik yöntemlerle elde edilir. Veriler; sözleşmenin kurulması veya ifası, hukuki yükümlülüğün yerine getirilmesi, bir hakkın tesisi, kullanılması veya korunması, temel haklara zarar vermemek kaydıyla meşru menfaat ve gerektiğinde açık rıza hukuki sebeplerine dayanılarak işlenir.</p>
-          <h2>Aktarım ve saklama</h2>
-          <p>Veriler; sipariş ve satış sürecinin yürütülmesi, iletişim hizmetlerinin sağlanması veya yasal zorunlulukların yerine getirilmesi amacıyla yetkili kamu kurumları, mali müşavir, tedarikçi, kargo ve iletişim hizmeti sağlayıcılarıyla yalnızca gerekli ölçüde paylaşılabilir. Veriler ilgili mevzuatta öngörülen veya işleme amacı için gerekli süre boyunca saklanır; sürenin sonunda silinir, yok edilir veya anonim hâle getirilir.</p>
-          <h2>Haklarınız</h2>
-          <p>Kanunun 11. maddesi kapsamındaki bilgi alma, düzeltme, silme veya yok etme, aktarılan kişileri öğrenme ve işleme faaliyetlerine itiraz haklarınıza ilişkin taleplerinizi kimliğinizi doğrulamaya elverişli bilgilerle <a href={business.emailHref}>{business.email}</a> adresine veya {business.address}, {business.city} adresine iletebilirsiniz.</p>
+    <div className="info-help">
+      <div>
+        <strong>{title}</strong>
+        <span>{children}</span>
+      </div>
+      <div className="info-help-actions">
+        <a href={business.phoneHref} className="hero-btn-phone">
+          <Phone size={17} /> {business.phone}
+        </a>
+        <a href={business.whatsappHref} target="_blank" rel="noreferrer" className="hero-btn-wa">
+          <MessageCircle size={17} /> WhatsApp
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function FaqPage() {
+  return (
+    <>
+      <InfoHero code="MEKA // YARDIM" label="SORU & CEVAP" title="Sıkça sorulan sorular">
+        Servis, ürün ve parça süreçleriyle ilgili en sık sorulan soruların kısa yanıtları.
+      </InfoHero>
+      <section className="info-body">
+        <div className="info-body-inner">
+          <div className="faq-list">
+            {faqItems.map(([question, answer], index) => (
+              <details key={question}>
+                <summary>
+                  <span className="faq-question">
+                    <span className="faq-num">{String(index + 1).padStart(2, "0")}</span>
+                    <span>{question}</span>
+                  </span>
+                </summary>
+                <p>{answer}</p>
+              </details>
+            ))}
+          </div>
+          <InfoHelp title="Sorunuz burada yok mu?">Arayın veya WhatsApp'tan yazın, ustası yanıtlasın.</InfoHelp>
         </div>
-      ) : (
-        <div className="legal-copy">
-          <h2>Site kullanımı</h2>
-          <p>Bu internet sitesi, {business.brand} unvanlı ve {business.legalOperator} tarafından işletilen işyerinin motosiklet parça ve aksesuar ürünleri hakkında bilgi vermesi ve iletişim kanallarına erişim sağlaması amacıyla sunulur.</p>
-          <h2>Toplanan bilgiler</h2>
-          <p>Site üzerinde üyelik, çevrim içi ödeme veya doğrudan mesaj formu bulunmaz. Telefon, e-posta ya da Instagram bağlantılarını kullanmanız hâlinde bilgileriniz ilgili kanalın koşulları ve KVKK Aydınlatma Metnimiz kapsamında değerlendirilir.</p>
-          <h2>Teknik veriler ve dış bağlantılar</h2>
-          <p>Barındırma ve güvenlik hizmetleri; IP adresi, tarayıcı türü ve erişim zamanı gibi sınırlı teknik kayıtları güvenlik ve hizmet sürekliliği amacıyla işleyebilir. Dış platformların kendi gizlilik uygulamalarından ilgili hizmet sağlayıcı sorumludur.</p>
-          <h2>Çerezler</h2>
-          <p>Mevcut sürüm reklam veya profilleme çerezi kullanmaz. Zorunlu teknik özellikler eklenirse bu politika güncellenir ve gerektiğinde kullanıcı tercihi alınır.</p>
-          <h2>İletişim</h2>
-          <p>Gizlilikle ilgili sorularınızı <a href={business.emailHref}>{business.email}</a> adresine veya {business.address}, {business.city} adresine iletebilirsiniz.</p>
+      </section>
+    </>
+  );
+}
+
+function LegalPage({ type, setPage }) {
+  const isKvkk = type === "kvkk";
+  const openPage = (page) => {
+    setPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  return (
+    <>
+      <InfoHero
+        code="MEKA // YASAL"
+        label={isKvkk ? "KVKK" : "GİZLİLİK"}
+        title={isKvkk ? "KVKK Aydınlatma Metni" : "Gizlilik Politikası"}
+      >
+        Son güncelleme: {isKvkk ? "29 Ağustos 2026" : "2 Ekim 2026"}
+      </InfoHero>
+      <section className="info-body">
+        <div className="info-body-inner">
+          {isKvkk ? (
+            <div className="legal-copy">
+              <h2>Veri sorumlusu</h2>
+              <p>6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında veri sorumlusu; {business.address}, {business.city} adresinde faaliyet gösteren, işletme unvanı {business.brand} ve işletme sahibi {business.legalOperator} olan işletmedir.</p>
+              <h2>İşletmenin faaliyet alanı</h2>
+              <p>İşletmenin ruhsatta kayıtlı faaliyet konusu “{business.licensedActivity}”dır. İşletme, {business.licenseAuthority} tarafından {business.licenseIssueDate} tarihinde düzenlenen işyeri açma ve çalışma ruhsatıyla faaliyet göstermektedir.</p>
+              <h2>İşlenen veriler ve amaçlar</h2>
+              <p>Telefon, e-posta, WhatsApp veya Instagram üzerinden bizimle iletişim kurmanız hâlinde paylaştığınız ad-soyad, telefon, e-posta, motosiklet ve talep bilgileri; talebinizi yanıtlamak, ürün ve parça uygunluğunu değerlendirmek, sipariş veya müşteri iletişim sürecini yürütmek, muhasebe kayıtlarını oluşturmak ve yasal yükümlülükleri yerine getirmek amacıyla işlenebilir.</p>
+              <h2>Toplama yöntemi ve hukuki sebep</h2>
+              <p>Veriler mağaza ziyareti, telefon görüşmesi, e-posta, WhatsApp, Instagram ve internet sitesindeki iletişim bağlantıları üzerinden sözlü, yazılı veya elektronik yöntemlerle elde edilir. Veriler; sözleşmenin kurulması veya ifası, hukuki yükümlülüğün yerine getirilmesi, bir hakkın tesisi, kullanılması veya korunması, temel haklara zarar vermemek kaydıyla meşru menfaat ve gerektiğinde açık rıza hukuki sebeplerine dayanılarak işlenir.</p>
+              <h2>Aktarım ve saklama</h2>
+              <p>Veriler; sipariş ve satış sürecinin yürütülmesi, iletişim hizmetlerinin sağlanması veya yasal zorunlulukların yerine getirilmesi amacıyla yetkili kamu kurumları, mali müşavir, tedarikçi, kargo ve iletişim hizmeti sağlayıcılarıyla yalnızca gerekli ölçüde paylaşılabilir. Veriler ilgili mevzuatta öngörülen veya işleme amacı için gerekli süre boyunca saklanır; sürenin sonunda silinir, yok edilir veya anonim hâle getirilir.</p>
+              <h2>Haklarınız</h2>
+              <p>Kanunun 11. maddesi kapsamındaki bilgi alma, düzeltme, silme veya yok etme, aktarılan kişileri öğrenme ve işleme faaliyetlerine itiraz haklarınıza ilişkin taleplerinizi kimliğinizi doğrulamaya elverişli bilgilerle <a href={business.emailHref}>{business.email}</a> adresine veya {business.address}, {business.city} adresine iletebilirsiniz.</p>
+            </div>
+          ) : (
+            <div className="legal-copy">
+              <h2>Site kullanımı</h2>
+              <p>Bu internet sitesi, {business.brand} unvanlı ve {business.legalOperator} tarafından işletilen işyerinin motosiklet parça ve aksesuar ürünleri hakkında bilgi vermesi ve iletişim kanallarına erişim sağlaması amacıyla sunulur.</p>
+              <h2>Toplanan bilgiler</h2>
+              <p>Site üzerinde üyelik veya çevrim içi ödeme bulunmaz. İletişim sayfasındaki randevu formu yazdıklarınızı sitede saklamaz; yalnızca sizin göndereceğiniz bir WhatsApp mesajı hazırlar. Telefon, e-posta, WhatsApp ya da Instagram bağlantılarını kullanmanız hâlinde bilgileriniz ilgili kanalın koşulları ve KVKK Aydınlatma Metnimiz kapsamında değerlendirilir.</p>
+              <h2>Teknik veriler ve dış bağlantılar</h2>
+              <p>Barındırma ve güvenlik hizmetleri; IP adresi, tarayıcı türü ve erişim zamanı gibi sınırlı teknik kayıtları güvenlik ve hizmet sürekliliği amacıyla işleyebilir. Dış platformların kendi gizlilik uygulamalarından ilgili hizmet sağlayıcı sorumludur.</p>
+              <h2>Çerezler</h2>
+              <p>Mevcut sürüm reklam veya profilleme çerezi kullanmaz. Zorunlu teknik özellikler eklenirse bu politika güncellenir ve gerektiğinde kullanıcı tercihi alınır.</p>
+              <h2>İletişim</h2>
+              <p>Gizlilikle ilgili sorularınızı <a href={business.emailHref}>{business.email}</a> adresine veya {business.address}, {business.city} adresine iletebilirsiniz.</p>
+            </div>
+          )}
+          <div className="info-related">
+            <span>İlgili sayfalar</span>
+            <button type="button" onClick={() => openPage(isKvkk ? "privacy" : "kvkk")}>
+              {isKvkk ? "Gizlilik Politikası" : "KVKK Aydınlatma Metni"} <ChevronRight size={15} />
+            </button>
+            <button type="button" onClick={() => openPage("faq")}>
+              Sıkça sorulan sorular <ChevronRight size={15} />
+            </button>
+          </div>
         </div>
-      )}
-    </section>
+      </section>
+    </>
   );
 }
 
