@@ -30,7 +30,7 @@ export function DashboardSection() {
 
   return (
     <>
-      <PageHeading title="Operasyon özeti" description="Satışsız vitrin, teklif ve servis odaklı işletme takibi." chip="Tüm kayıtlar" />
+      <PageHeading title="Atölye & İşletme Özeti" description="Simav MEKA Moto Garage servis akışı, parça stoğu ve operasyonel takip." chip="Atölye Yönetimi" />
       <ResourceNotice isLoading={isLoading} error={error} />
       <div className="metric-grid">
         <MetricCard label="Gelir" value={formatCurrency(metrics.income)} trend="Ödenen faturalar + diğer gelir" />

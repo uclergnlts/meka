@@ -6,6 +6,7 @@ import { AdminPanel } from "../features/admin/AdminPanel.jsx";
 import { BUSINESS_SETTINGS_EVENT, applyServerBusinessSettings } from "../data/business.js";
 import { api } from "../services/apiClient.js";
 import { applyServerBrandAssets } from "../utils/brandAssets.js";
+import { isAdminHost, publicSiteUrl } from "../utils/adminHost.js";
 
 const hashPages = {
   "#anasayfa": "home",
@@ -57,7 +58,7 @@ const hashAdminSections = {
 };
 
 export function App() {
-  const [view, setView] = useState("site");
+  const [view, setView] = useState(isAdminHost ? "admin" : "site");
   const [publicPage, setPublicPage] = useState("home");
   const [adminSection, setAdminSection] = useState("dashboard");
   const [, setBusinessVersion] = useState(0);
@@ -75,10 +76,9 @@ export function App() {
 
   useEffect(() => {
     const syncHash = () => {
-      const adminHashSection = hashAdminSections[window.location.hash];
-      if (adminHashSection) {
+      if (isAdminHost) {
         setView("admin");
-        setAdminSection(adminHashSection);
+        setAdminSection(hashAdminSections[window.location.hash] ?? "dashboard");
         return;
       }
 
@@ -103,7 +103,12 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (view !== "site") return;
+    if (view !== "site") {
+      // The panel host should not turn up in search results.
+      document.title = "Yönetim Paneli | MEKA Moto Garage";
+      document.querySelector('meta[name="robots"]')?.setAttribute("content", "noindex, nofollow");
+      return;
+    }
     const [title, description] = pageMeta[publicPage] ?? pageMeta.home;
     document.title = title;
     document.querySelector('meta[name="description"]')?.setAttribute("content", description);
@@ -140,7 +145,7 @@ export function App() {
       {view === "site" ? (
         <PublicSite page={publicPage} setPage={navigatePublicPage} />
       ) : (
-        <AdminAccess><AdminPanel activeSection={adminSection} setActiveSection={navigateAdminSection} onExit={() => { navigateView("site"); navigatePublicPage("home"); }} /></AdminAccess>
+        <AdminAccess><AdminPanel activeSection={adminSection} setActiveSection={navigateAdminSection} onExit={() => { window.location.href = publicSiteUrl(); }} /></AdminAccess>
       )}
     </div>
   );

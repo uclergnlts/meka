@@ -13,16 +13,16 @@ import { BusinessSettingsSection } from "./sections/BusinessSettingsSection.jsx"
 import { BackupSection } from "./sections/BackupSection.jsx";
 
 export const adminSections = [
-  { id: "dashboard", label: "Özet", icon: BarChart3 },
-  { id: "products", label: "Ürün", icon: Boxes },
-  { id: "stock", label: "Stok", icon: PackageCheck },
-  { id: "service", label: "Servis", icon: Wrench },
-  { id: "invoices", label: "Fatura", icon: ReceiptText },
-  { id: "finance", label: "Gelir/Gider", icon: Wallet },
-  { id: "customers", label: "Müşteri", icon: Users },
-  { id: "branding", label: "Logo", icon: Image },
-  { id: "settings", label: "Ayarlar", icon: Settings },
-  { id: "backup", label: "Yedek", icon: DatabaseBackup },
+  { id: "dashboard", label: "Genel Bakış", icon: BarChart3 },
+  { id: "products", label: "Ürün Vitrini", icon: Boxes },
+  { id: "stock", label: "Stok Takibi", icon: PackageCheck },
+  { id: "service", label: "Servis & İş Emirleri", icon: Wrench },
+  { id: "invoices", label: "Faturalar", icon: ReceiptText },
+  { id: "finance", label: "Gelir / Gider", icon: Wallet },
+  { id: "customers", label: "Müşteriler", icon: Users },
+  { id: "branding", label: "Logo & Görsel", icon: Image },
+  { id: "settings", label: "İşletme Ayarları", icon: Settings },
+  { id: "backup", label: "Yedekleme", icon: DatabaseBackup },
 ];
 
 export function AdminPanel({ activeSection, setActiveSection, onExit }) {
@@ -45,10 +45,27 @@ export function AdminPanel({ activeSection, setActiveSection, onExit }) {
 
   return (
     <div className="admin-app">
-      <header className="admin-topbar"><div><span className="admin-topbar-mark"><Bike size={20} /></span><span><strong>MEKA</strong><small>Yönetim Merkezi</small></span></div><button type="button" onClick={onExit}>Siteyi görüntüle <ArrowUpRight size={17} /></button></header>
+      <header className="admin-topbar">
+        <div>
+          <span className="admin-topbar-mark">
+            <Bike size={20} />
+          </span>
+          <span>
+            <strong>MEKA MOTO GARAGE</strong>
+            <small>Atölye &amp; İşletme Yönetimi · Simav</small>
+          </span>
+        </div>
+        <button type="button" onClick={onExit}>
+          <ArrowUpRight size={17} /> Siteyi Görüntüle
+        </button>
+      </header>
       <main className="admin-shell">
         <AdminSidebar activeSection={activeSection} setActiveSection={setActiveSection} sections={adminSections} />
-        <section className="admin-content"><div className="admin-content-inner"><ActiveComponent /></div></section>
+        <section className="admin-content">
+          <div className="admin-content-inner">
+            <ActiveComponent />
+          </div>
+        </section>
       </main>
     </div>
   );
