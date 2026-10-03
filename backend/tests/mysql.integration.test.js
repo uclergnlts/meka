@@ -2,6 +2,7 @@ import { invoiceToForm, invoiceTotal } from "../../frontend/src/utils/invoices.j
 import sharp from "sharp";
 import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import http from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
@@ -20,7 +21,13 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
   await mkdir(path.join(frontendDir, "assets"));
   await writeFile(path.join(frontendDir, "index.html"), "<!doctype html><title>MEKA test</title>");
   await writeFile(path.join(frontendDir, "assets", "app.js"), "console.log('meka');");
+  await writeFile(path.join(frontendDir, "robots.txt"), "User-agent: *\nAllow: /\n");
   process.env.FRONTEND_DIR = frontendDir;
+  // A stand-in for the web server's document root, where certificate challenge files land.
+  const webRoot = await mkdtemp(path.join(tmpdir(), "meka-test-webroot-"));
+  await mkdir(path.join(webRoot, ".well-known", "acme-challenge"), { recursive: true });
+  await writeFile(path.join(webRoot, ".well-known", "acme-challenge", "test-token"), "test-token.key-authorisation");
+  process.env.WEB_ROOT = webRoot;
   const { prisma } = await import("../src/lib/prisma.js");
   const { createApp } = await import("../src/app.js");
   const server = createApp().listen(0, "127.0.0.1");
@@ -32,6 +39,7 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
   await prisma.admin.create({ data: { username, passwordHash: await hashPassword(password) } });
   const denied = await fetch(`${origin}/api/customers`);
   assert.equal(denied.status, 401);
+  assert.equal(denied.headers.get("cache-control"), "no-store");
   const login = await fetch(`${origin}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json", "X-Meka-Request": "1" }, body: JSON.stringify({ username, password }) });
   assert.equal(login.status, 200);
   const cookie = login.headers.get("set-cookie").split(";")[0];
@@ -59,8 +67,36 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
     const asset = await fetch(`${origin}/assets/app.js`);
     assert.equal(asset.status, 200);
     assert.match(asset.headers.get("cache-control"), /immutable/);
-    assert.equal((await fetch(`${origin}/assets/missing.js`)).status, 404);
+    // Missing files and API answers must not be kept by a cache in front of the app.
+    const missing = await fetch(`${origin}/assets/missing.js`);
+    assert.equal(missing.status, 404);
+    assert.equal(missing.headers.get("cache-control"), "no-store");
+    assert.equal((await fetch(`${origin}/api/public/settings`)).headers.get("cache-control"), "no-store");
     await request("/yok-boyle-bir-adres", "GET", undefined, 404);
+    // Certificate challenge files are served as they are; a missing one is a 404, never the site page.
+    const challenge = await fetch(`${origin}/.well-known/acme-challenge/test-token`);
+    assert.equal(challenge.status, 200);
+    assert.equal(await challenge.text(), "test-token.key-authorisation");
+    assert.equal((await fetch(`${origin}/.well-known/acme-challenge/missing`)).status, 404);
+    // Search engines: the site's robots file is served as it is, the panel host asks not to be
+    // listed, and www redirects to the bare domain (certificate challenges excepted).
+    const onHost = (host, path) => new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port: server.address().port, path, headers: { Host: host } }, (response) => {
+        let body = "";
+        response.on("data", (chunk) => { body += chunk; });
+        response.on("end", () => resolve({ status: response.statusCode, headers: response.headers, body }));
+      }).on("error", reject);
+    });
+    const siteRobots = await onHost("meka.test", "/robots.txt");
+    assert.match(siteRobots.body, /Allow: \//);
+    assert.equal(siteRobots.headers["x-robots-tag"], undefined);
+    const panelRobots = await onHost("admin.meka.test", "/robots.txt");
+    assert.match(panelRobots.body, /Disallow: \//);
+    assert.equal((await onHost("admin.meka.test", "/")).headers["x-robots-tag"], "noindex, nofollow");
+    const redirected = await onHost("www.meka.test", "/urunler?kategori=yag");
+    assert.equal(redirected.status, 301);
+    assert.equal(redirected.headers.location, "http://meka.test/urunler?kategori=yag");
+    assert.equal((await onHost("www.meka.test", "/.well-known/acme-challenge/test-token")).body, "test-token.key-authorisation");
     // Another site may not call the API; the site's own address may, without being listed.
     const withOrigin = (value) => fetch(`${origin}/api/public/products`, { headers: { Origin: value } });
     assert.equal((await withOrigin("https://baska-site.example")).status, 403);
@@ -261,6 +297,7 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
     if (originalSettings.length) await prisma.setting.createMany({ data: originalSettings });
     await rm(uploadDir, { recursive: true, force: true });
     await rm(frontendDir, { recursive: true, force: true });
+    await rm(webRoot, { recursive: true, force: true });
     await prisma.admin.delete({ where: { username } });
     await prisma.$disconnect();
   }

@@ -15,7 +15,9 @@ const generatedClient = [from("node_modules/.prisma/client"), from("backend/node
 if (!generatedClient) throw new Error("Generated database client not found; run `npm run db:generate` first.");
 if (!existsSync(from("frontend/dist/index.html"))) throw new Error("Built frontend not found; run `npm run build:frontend` first.");
 
-rmSync(output, { recursive: true, force: true });
+// Only the previous bundle is replaced; backups and other files kept in dist-hosting stay.
+rmSync(bundle, { recursive: true, force: true });
+rmSync(path.join(output, "meka-hosting.zip"), { force: true });
 mkdirSync(bundle, { recursive: true });
 
 cpSync(from("backend/src"), path.join(bundle, "src"), { recursive: true });

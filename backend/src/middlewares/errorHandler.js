@@ -4,6 +4,8 @@ export function errorHandler(error, req, res, next) {
     return;
   }
 
+  // An error answer describes this moment only; no cache in front of the app should keep it.
+  res.set("Cache-Control", "no-store");
   const driverCause = error.meta?.driverAdapterError?.cause;
   const mysqlPoolUnavailable = driverCause?.kind === "mysql" && Number(driverCause.code) === 45028;
 

@@ -3,10 +3,11 @@ import { useEffect, useState } from "react";
 import { Header } from "../components/layout/Header.jsx";
 import { PublicSite } from "../features/public/PublicSite.jsx";
 import { AdminPanel } from "../features/admin/AdminPanel.jsx";
-import { BUSINESS_SETTINGS_EVENT, applyServerBusinessSettings } from "../data/business.js";
+import { BUSINESS_SETTINGS_EVENT, applyServerBusinessSettings, business } from "../data/business.js";
 import { api } from "../services/apiClient.js";
 import { applyServerBrandAssets } from "../utils/brandAssets.js";
 import { isAdminHost, publicSiteUrl } from "../utils/adminHost.js";
+import { applyBusinessSchema, applyPageMeta } from "../utils/seo.js";
 
 const hashPages = {
   "#anasayfa": "home",
@@ -34,8 +35,8 @@ const pathPages = {
 const pagePaths = Object.fromEntries(Object.entries(pathPages).map(([path, page]) => [page, path]));
 
 const pageMeta = {
-  home: ["MEKA Moto Garage | Simav Motosiklet Servisi", "Simav'da motosiklet servisi, bakım, yedek parça ve aksesuar desteği."],
-  products: ["Ürünler | MEKA Moto Garage", "Motosiklet yedek parça, bakım ürünü ve aksesuar vitrini."],
+  home: ["MEKA Moto Garage | Simav Motosiklet Servisi, Yedek Parça ve Aksesuar", "Simav'da motosiklet servisi, bakım, yedek parça ve aksesuar."],
+  products: ["Ürünler | MEKA Moto Garage", "Simav'da motosiklet yedek parça, bakım ürünü ve aksesuar vitrini."],
   about: ["Hakkımızda | MEKA Moto Garage", "MEKA Moto Garage ve Simav'daki motosiklet servis yaklaşımımız hakkında bilgi alın."],
   contact: ["İletişim | MEKA Moto Garage", "Servis randevusu, ürün ve yedek parça bilgisi için MEKA Moto Garage ile iletişime geçin."],
   faq: ["Sıkça Sorulan Sorular | MEKA Moto Garage", "Servis, randevu, parça, ürün ve ödeme süreçleri hakkında sık sorulan sorular."],
@@ -61,7 +62,7 @@ export function App() {
   const [view, setView] = useState(isAdminHost ? "admin" : "site");
   const [publicPage, setPublicPage] = useState("home");
   const [adminSection, setAdminSection] = useState("dashboard");
-  const [, setBusinessVersion] = useState(0);
+  const [businessVersion, setBusinessVersion] = useState(0);
 
   useEffect(() => {
     const refreshBusiness = () => setBusinessVersion((current) => current + 1);
@@ -109,10 +110,16 @@ export function App() {
       document.querySelector('meta[name="robots"]')?.setAttribute("content", "noindex, nofollow");
       return;
     }
-    const [title, description] = pageMeta[publicPage] ?? pageMeta.home;
-    document.title = title;
-    document.querySelector('meta[name="description"]')?.setAttribute("content", description);
-  }, [publicPage, view]);
+    const page = pageMeta[publicPage] ? publicPage : "home";
+    const [title, description] = pageMeta[page];
+    applyPageMeta({
+      title,
+      // The home page result also carries the address, the first thing a local search looks for.
+      description: page === "home" ? `${description} ${business.brand}: ${business.address}, ${business.city}.` : description,
+      path: pagePaths[page],
+    });
+    applyBusinessSchema(business);
+  }, [publicPage, view, businessVersion]);
 
   const navigatePublicPage = (page) => {
     setPublicPage(page);
