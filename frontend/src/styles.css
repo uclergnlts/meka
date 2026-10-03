@@ -67,7 +67,7 @@ th { position: sticky; top: 0; z-index: 1; background: #fff; }.table-wrap { bord
   .admin-content { padding: 22px 16px 40px; }.panel-grid { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1050px) {
   .topbar { flex-wrap: nowrap; padding: 8px 16px; min-height: 64px; }
   .desktop-nav, .topbar-phone, .topbar-cta { display: none !important; }
   .menu-btn, .mobile-call-btn { display: inline-flex !important; flex: none; }
@@ -4995,3 +4995,140 @@ td:first-child {
   font-weight: 700;
 }
 
+
+/* Site buttons used outside the hero sections (home CTA, product empty state, footer, contact). */
+.primary-btn,
+.secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 12px 24px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 850;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary-btn {
+  border-color: var(--meka-red);
+  background: var(--meka-red);
+  color: #ffffff;
+}
+
+.primary-btn:hover {
+  border-color: #b80000;
+  background: #b80000;
+}
+
+.secondary-btn {
+  border-color: rgba(5, 5, 6, 0.3);
+  background: transparent;
+  color: var(--meka-ink);
+}
+
+.secondary-btn:hover {
+  border-color: var(--meka-ink);
+}
+
+/* On dark sections the outline button is white. */
+.secondary-btn.light {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+.secondary-btn.light:hover {
+  border-color: #ffffff;
+}
+
+/* Small red label above a heading. */
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: var(--meka-red);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Loading / unreachable notice above the storefront. */
+.site-status {
+  margin: 0;
+  padding: 10px clamp(18px, 5vw, 72px);
+  background: #111317;
+  color: #d7d9de;
+  font-size: 14px;
+}
+
+/* Dark panel theme: boxes that hard-code a light background above get matching dark colours. */
+.panel-dark .form-grid label,
+.panel-dark .form-heading h3,
+.panel-dark .backup-card h2,
+.panel-dark .branding-card h2,
+.panel-dark .invoice-line-editor h3,
+.panel-dark .product-image-editor h3,
+.panel-dark .product-image-editor strong,
+.panel-dark .backup-card strong {
+  color: #ececec;
+}
+
+.panel-dark .backup-card,
+.panel-dark .branding-card,
+.panel-dark .invoice-line-editor,
+.panel-dark .product-image-editor,
+.panel-dark .call-list-panel,
+.panel-dark .report-panel {
+  border-color: #2e3035;
+  background: #232529;
+}
+
+.panel-dark .notification-item,
+.panel-dark .reminder-panel > a,
+.panel-dark .customer-detail-grid span,
+.panel-dark .bulk-toolbar,
+.panel-dark .call-list-panel a {
+  color: #ececec;
+  background: #2a2d33;
+}
+
+.panel-dark .bulk-toolbar button {
+  color: #ececec;
+  background: #3a3d44;
+}
+
+/* Dark panel theme, continued: the panel shell itself. These come last so they win over the
+   light backgrounds the panel layout sets further up. */
+.panel-dark .admin-app,
+.panel-dark .admin-app .admin-content {
+  background: #141518;
+}
+
+.panel-dark .admin-app .admin-sidebar {
+  border-color: #2e3035;
+  background: #1c1e22;
+}
+
+.panel-dark .admin-sidebar h1,
+.panel-dark .admin-heading h2,
+.panel-dark .admin-tabs button,
+.panel-dark .sidebar-controls button {
+  color: #ececec;
+}
+
+.panel-dark .admin-heading p {
+  color: #b5b8be;
+}
+
+.panel-dark .admin-tabs button:hover {
+  background: #2a2d33;
+}
+
+/* The logo is made for the dark header, so its preview in the panel sits on the same dark ground. */
+.logo-preview-admin {
+  border-color: transparent;
+  background: #0b0c0e;
+}

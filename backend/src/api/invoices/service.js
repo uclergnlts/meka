@@ -32,8 +32,10 @@ export const invoiceService = {
 
   async getSummary() {
     const invoices = await invoiceRepository.findAll();
-    const paidTotal = invoices.filter((invoice) => invoice.status === "Ödendi").reduce((total, invoice) => total + Number(invoice.amount), 0);
-    const pendingTotal = invoices.filter((invoice) => invoice.status !== "Ödendi").reduce((total, invoice) => total + Number(invoice.amount), 0);
+    // Summed in whole kuruş so DECIMAL values do not pick up float drift.
+    const sumCents = (rows) => rows.reduce((total, invoice) => total + Math.round(Number(invoice.amount) * 100), 0);
+    const paidTotal = sumCents(invoices.filter((invoice) => invoice.status === "Ödendi")) / 100;
+    const pendingTotal = sumCents(invoices.filter((invoice) => invoice.status !== "Ödendi")) / 100;
 
     return {
       paidTotal,

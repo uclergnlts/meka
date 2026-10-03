@@ -6,7 +6,7 @@ import { PageHeading } from "../../../components/ui/PageHeading.jsx";
 import { ResourceNotice } from "../../../components/ui/ResourceNotice.jsx";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { api } from "../../../services/apiClient.js";
-import { todayIso } from "../../../utils/formatters.js";
+import { addDays, todayIso } from "../../../utils/formatters.js";
 
 function createEmptyServiceForm() {
   return {
@@ -50,6 +50,24 @@ export function ServiceSection() {
         .includes(normalizedQuery);
     }), [jobs, normalizedQuery, statusFilter]);
 
+  const calendarJobs = useMemo(() => {
+    const today = todayIso();
+    const end = addDays(today, calendarMode === "day" ? 1 : calendarMode === "week" ? 7 : 31);
+    // Older records carry "Bugün 14:30" style plans; anything else without a date is left out.
+    const planDate = (schedule) => {
+      const text = String(schedule ?? "");
+      if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+      if (text.startsWith("Bugün")) return today;
+      if (text.startsWith("Yarın")) return addDays(today, 1);
+      return null;
+    };
+    return jobs
+      .map((job) => ({ job, date: planDate(job.schedule) }))
+      .filter(({ date }) => date && date >= today && date < end)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(({ job }) => job);
+  }, [jobs, calendarMode]);
+
   const waitingParts = jobs.filter((job) => job.status === "Parça bekliyor").length;
   const readyForDelivery = jobs.filter((job) => job.status === "Teslim hazır").length;
   const plannedJobs = jobs.filter((job) => job.status === "Planlandı").length;
@@ -67,9 +85,16 @@ export function ServiceSection() {
     setActionError(null);
   };
 
+  const startNew = (status) => {
+    setEditingId(null);
+    setForm({ ...createEmptyServiceForm(), status });
+    setActionError(null);
+  };
+
   const startEdit = (job) => {
     setEditingId(job.id);
-    setForm({ ...createEmptyServiceForm(), ...job });
+    // Optional columns come back as null; inputs want empty strings.
+    setForm({ ...createEmptyServiceForm(), ...Object.fromEntries(Object.entries(job).map(([key, value]) => [key, value ?? ""])) });
     setActionError(null);
   };
 
@@ -95,8 +120,10 @@ export function ServiceSection() {
     const safe = (value) => String(value ?? "-").replace(/[<>&]/g, (char) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[char]);
     const popup = window.open("", "_blank", "width=850,height=700");
     if (!popup) return;
-    popup.document.write(`<html><head><title>${safe(job.id)} Servis Formu</title><style>body{font-family:Arial;padding:40px;color:#151515}h1{border-bottom:3px solid #d60000;padding-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.box{border:1px solid #ddd;padding:12px}.wide{grid-column:1/-1}@media print{button{display:none}}</style></head><body><h1>MEKA Moto Garage · Servis İş Emri</h1><div class="grid"><div class="box"><b>No:</b> ${safe(job.id)}</div><div class="box"><b>Tarih:</b> ${safe(job.schedule)}</div><div class="box"><b>Müşteri:</b> ${safe(job.customer)}</div><div class="box"><b>Telefon:</b> ${safe(job.phone)}</div><div class="box"><b>Motosiklet:</b> ${safe(job.motorcycle)}</div><div class="box"><b>Plaka / Km:</b> ${safe(job.plate)} · ${safe(job.mileage)}</div><div class="box wide"><b>İşlem:</b> ${safe(job.operation)}</div><div class="box wide"><b>Kullanılan parçalar:</b> ${safe(job.parts)}</div><div class="box"><b>İşçilik:</b> ${safe(job.labor)}</div><div class="box"><b>Durum:</b> ${safe(job.status)}</div><div class="box wide"><b>Notlar:</b> ${safe(job.notes)}</div></div><p><br> Müşteri imzası: ____________________</p><button onclick="window.print()">Yazdır</button></body></html>`);
+    popup.document.write(`<html><head><title>${safe(job.id)} Servis Formu</title><style>body{font-family:Arial;padding:40px;color:#151515}h1{border-bottom:3px solid #d60000;padding-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.box{border:1px solid #ddd;padding:12px}.wide{grid-column:1/-1}@media print{button{display:none}}</style></head><body><h1>MEKA Moto Garage · Servis İş Emri</h1><div class="grid"><div class="box"><b>No:</b> ${safe(job.id)}</div><div class="box"><b>Tarih:</b> ${safe(job.schedule)}</div><div class="box"><b>Müşteri:</b> ${safe(job.customer)}</div><div class="box"><b>Telefon:</b> ${safe(job.phone)}</div><div class="box"><b>Motosiklet:</b> ${safe(job.motorcycle)}</div><div class="box"><b>Plaka / Km:</b> ${safe(job.plate)} · ${safe(job.mileage)}</div><div class="box wide"><b>İşlem:</b> ${safe(job.operation)}</div><div class="box wide"><b>Kullanılan parçalar:</b> ${safe(job.parts)}</div><div class="box"><b>İşçilik:</b> ${safe(job.labor)}</div><div class="box"><b>Durum:</b> ${safe(job.status)}</div><div class="box wide"><b>Notlar:</b> ${safe(job.notes)}</div></div><p><br> Müşteri imzası: ____________________</p><button type="button">Yazdır</button></body></html>`);
     popup.document.close();
+    // Wired up from here rather than with an inline onclick, which the site's content security policy blocks.
+    popup.document.querySelector("button").addEventListener("click", () => popup.print());
   };
 
   const downloadCsv = () => {
@@ -151,7 +178,7 @@ export function ServiceSection() {
             <input type="date" value={form.schedule} onChange={(event) => updateField("schedule", event.target.value)} required />
           </label>
           <label>Kullanılan parçalar<input value={form.parts} onChange={(event) => updateField("parts", event.target.value)} placeholder="Parça ve adet" /></label>
-          <label>İşçilik tutarı<input type="number" min="0" value={form.labor} onChange={(event) => updateField("labor", event.target.value)} /></label>
+          <label>İşçilik tutarı<input type="number" min="0" step="0.01" value={form.labor} onChange={(event) => updateField("labor", event.target.value)} /></label>
           <label className="form-span-2">Teknisyen notları<textarea value={form.notes} onChange={(event) => updateField("notes", event.target.value)} /></label>
           <label>
             Durum
@@ -169,14 +196,14 @@ export function ServiceSection() {
         </button>
       </form>
       <div className="quick-actions">
-        <button type="button" onClick={() => updateField("status", "Planlandı")}><CalendarPlus size={18} /> Randevu ekle</button>
-        <button type="button" onClick={() => updateField("status", "Serviste")}><ClipboardCheck size={18} /> İş emri oluştur</button>
+        <button type="button" onClick={() => startNew("Planlandı")}><CalendarPlus size={18} /> Randevu ekle</button>
+        <button type="button" onClick={() => startNew("Serviste")}><ClipboardCheck size={18} /> İş emri oluştur</button>
         <button type="button" onClick={downloadCsv}><Download size={18} /> Servis CSV</button>
       </div>
-      <div className="calendar-panel"><div className="form-heading"><h3>Servis takvimi</h3><div className="segmented-control"><button className={calendarMode === "day" ? "active" : ""} type="button" onClick={() => setCalendarMode("day")}>Gün</button><button className={calendarMode === "week" ? "active" : ""} type="button" onClick={() => setCalendarMode("week")}>Hafta</button><button className={calendarMode === "month" ? "active" : ""} type="button" onClick={() => setCalendarMode("month")}>Ay</button></div></div><div className={`service-calendar ${calendarMode}`}>{[...jobs].sort((a,b) => String(a.schedule).localeCompare(String(b.schedule))).slice(0, calendarMode === "day" ? 4 : calendarMode === "week" ? 10 : 31).map((job) => <button type="button" onClick={() => startEdit(job)} key={`cal-${job.id}`}><strong>{job.schedule}</strong><span>{job.motorcycle}</span><small>{job.status}</small></button>)}</div></div>
+      <div className="calendar-panel"><div className="form-heading"><h3>Servis takvimi</h3><div className="segmented-control"><button className={calendarMode === "day" ? "active" : ""} type="button" onClick={() => setCalendarMode("day")}>Gün</button><button className={calendarMode === "week" ? "active" : ""} type="button" onClick={() => setCalendarMode("week")}>Hafta</button><button className={calendarMode === "month" ? "active" : ""} type="button" onClick={() => setCalendarMode("month")}>Ay</button></div></div><div className={`service-calendar ${calendarMode}`}>{calendarJobs.map((job) => <button type="button" onClick={() => startEdit(job)} key={`cal-${job.id}`}><strong>{job.schedule}</strong><span>{job.motorcycle}</span><small>{job.status}</small></button>)}</div></div>
       <DataTable
         title="Servis iş emirleri"
-        columns={["No", "Müşteri", "Motosiklet", "İşlem", "Plan", "Durum", "İşlem"]}
+        columns={["No", "Müşteri", "Motosiklet", "Yapılan iş", "Plan", "Durum", "İşlem"]}
         rows={filteredJobs.map((job) => ({ id: job.id, cells: [job.id, job.customer || "-", job.motorcycle, job.operation, job.schedule, job.status, <div className="row-actions"><button type="button" onClick={() => printJob(job)} aria-label={`${job.id} yazdır`}><ClipboardCheck size={16} /></button><button type="button" onClick={() => startEdit(job)} aria-label={`${job.id} düzenle`}><Pencil size={16} /></button><button type="button" onClick={() => deleteJob(job)} aria-label={`${job.id} sil`}><Trash2 size={16} /></button></div>] }))}
       />
     </>

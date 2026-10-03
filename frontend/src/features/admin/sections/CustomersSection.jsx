@@ -3,25 +3,26 @@ import { Download, Eye, Pencil, PhoneCall, Save, Search, Trash2, UserPlus, X } f
 import { DataTable } from "../../../components/ui/DataTable.jsx";
 import { PageHeading } from "../../../components/ui/PageHeading.jsx";
 import { ResourceNotice } from "../../../components/ui/ResourceNotice.jsx";
-import { business } from "../../../data/business.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { api } from "../../../services/apiClient.js";
+import { todayIso } from "../../../utils/formatters.js";
+import { whatsappLink } from "../../../utils/whatsapp.js";
 
-const emptyCustomerForm = {
+const createEmptyCustomerForm = () => ({
   name: "",
   phone: "",
   motorcycle: "",
   lastAction: "",
-  date: "Bugün",
+  date: todayIso(),
   status: "Aktif servis",
   nextMaintenance: "",
   notes: "",
-};
+});
 
 export function CustomersSection() {
   const { data: customerList, setData: setCustomerList, reload, error, isLoading } = useApiResource(api.customers.list, []);
   const [query, setQuery] = useState("");
-  const [form, setForm] = useState(emptyCustomerForm);
+  const [form, setForm] = useState(createEmptyCustomerForm);
   const [editingId, setEditingId] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -63,7 +64,7 @@ export function CustomersSection() {
 
   const resetForm = () => {
     setEditingId(null);
-    setForm(emptyCustomerForm);
+    setForm(createEmptyCustomerForm());
     setActionError(null);
   };
 
@@ -232,8 +233,8 @@ export function CustomersSection() {
         <button type="button" onClick={downloadCsv}><Download size={18} /> Müşteri CSV</button>
       </div>
       <div className="bulk-toolbar"><span>{selectedIds.length} kayıt seçili</span><button type="button" disabled={!selectedIds.length || isBulkSaving} onClick={() => bulkStatus("Aranacak")}>Aranacak yap</button><button type="button" disabled={!selectedIds.length || isBulkSaving} onClick={() => bulkStatus("Teslim edildi")}>Teslim edildi yap</button><button className="danger-text" type="button" disabled={!selectedIds.length || isBulkSaving} onClick={bulkDelete}>Seçilenleri kaldır</button></div>
-      {reminders.length ? <div className="reminder-panel"><div className="form-heading"><h3>Bakım hatırlatmaları</h3><span>{reminders.length} kayıt</span></div>{reminders.slice(0, 8).map((customer) => <a href={`${business.whatsappHref}?text=${encodeURIComponent(`Merhaba ${customer.name}, ${customer.motorcycle} için yaklaşan bakımınızı hatırlatmak isteriz.`)}`} target="_blank" rel="noreferrer" key={`rem-${customer.id}`}><strong>{customer.name}</strong><span>{customer.motorcycle}</span><small>{customer.nextMaintenance}</small></a>)}</div> : null}
-      {selectedCustomer ? <div className="customer-detail-card"><div className="form-heading"><h3>{selectedCustomer.name}</h3><button className="icon-action" type="button" onClick={() => setSelectedCustomer(null)}><X size={18} /></button></div><div className="customer-detail-grid"><span><small>Telefon</small><strong>{selectedCustomer.phone}</strong></span><span><small>Motosiklet</small><strong>{selectedCustomer.motorcycle}</strong></span><span><small>Son işlem</small><strong>{selectedCustomer.lastAction}</strong></span><span><small>Sonraki bakım</small><strong>{selectedCustomer.nextMaintenance || "Planlanmadı"}</strong></span><span className="wide"><small>Notlar</small><strong>{selectedCustomer.notes || "Not bulunmuyor"}</strong></span></div></div> : null}
+      {reminders.length ? <div className="reminder-panel"><div className="form-heading"><h3>Bakım hatırlatmaları</h3><span>{reminders.length} kayıt</span></div>{reminders.slice(0, 8).map((customer) => <a href={whatsappLink(customer.phone, `Merhaba ${customer.name}, ${customer.motorcycle} için yaklaşan bakımınızı hatırlatmak isteriz.`)} target="_blank" rel="noreferrer" key={`rem-${customer.id}`}><strong>{customer.name}</strong><span>{customer.motorcycle}</span><small>{customer.nextMaintenance}</small></a>)}</div> : null}
+      {selectedCustomer ? <div className="customer-detail-card"><div className="form-heading"><h3>{selectedCustomer.name}</h3><button className="icon-action" type="button" onClick={() => setSelectedCustomer(null)} aria-label="Müşteri kartını kapat"><X size={18} /></button></div><div className="customer-detail-grid"><span><small>Telefon</small><strong>{selectedCustomer.phone}</strong></span><span><small>Motosiklet</small><strong>{selectedCustomer.motorcycle}</strong></span><span><small>Son işlem</small><strong>{selectedCustomer.lastAction}</strong></span><span><small>Sonraki bakım</small><strong>{selectedCustomer.nextMaintenance || "Planlanmadı"}</strong></span><span className="wide"><small>Notlar</small><strong>{selectedCustomer.notes || "Not bulunmuyor"}</strong></span></div></div> : null}
       {showCallList ? (
         <div className="call-list-panel">
           {callList.map((customer) => (

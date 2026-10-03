@@ -14,6 +14,7 @@
     "build": "npm run build:frontend && node scripts/prepare-sites-dist.mjs",
     "build:frontend": "npm run build -w frontend",
     "build:sites": "vinext build",
+    "build:hosting": "npm run build:frontend && npm run db:generate && node scripts/build-hosting.mjs",
     "lint": "eslint .",
     "start:backend": "npm run start -w backend",
     "db:up": "node scripts/local-db.mjs up",

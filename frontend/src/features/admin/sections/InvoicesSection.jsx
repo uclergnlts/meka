@@ -46,7 +46,7 @@ export function InvoicesSection() {
     const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
     const statusFiltered = statusFilter === "all"
       ? invoiceList
-      : invoiceList.filter((invoice) => invoice.status === statusFilter);
+      : invoiceList.filter((invoice) => statusFilter === "unpaid" ? invoice.status !== "Ödendi" : invoice.status === statusFilter);
 
     if (!normalizedQuery) {
       return statusFiltered;
@@ -102,7 +102,7 @@ export function InvoicesSection() {
     setActionError(null);
 
     try {
-      const payload = { ...form, amount: calculatedTotal, description: form.items.map((item) => item.description).filter(Boolean).join(", ") || form.description };
+      const payload = { ...form, amount: calculatedTotal, description: form.description || form.items.map((item) => item.description).filter(Boolean).join(", ") };
       if (editingId) {
         const updatedInvoice = await api.invoices.update(editingId, payload);
         setInvoiceList((current) => current.map((invoice) => invoice.id === editingId ? { ...updatedInvoice, ...form, amount: calculatedTotal } : invoice));
@@ -128,8 +128,10 @@ export function InvoicesSection() {
     const rows = (invoice.items ?? [{ description: invoice.description, quantity: 1, unitPrice: invoice.amount }])
       .map((item) => `<tr><td>${escapeHtml(item.description)}</td><td>${escapeHtml(item.quantity)}</td><td>${escapeHtml(formatCurrency(item.unitPrice))}</td></tr>`)
       .join("");
-    popup.document.write(`<html><head><meta charset="utf-8"><title>${escapeHtml(invoice.id)}</title><style>body{font-family:Arial;padding:40px}h1{border-bottom:3px solid #d60000}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:10px;text-align:left}</style></head><body><h1>MEKA Moto Garage · Fatura/Teklif</h1><p><b>No:</b> ${escapeHtml(invoice.id)}<br><b>Müşteri:</b> ${escapeHtml(invoice.customer)}<br><b>Tarih:</b> ${escapeHtml(invoice.date)}</p><table><tr><th>Kalem</th><th>Adet</th><th>Birim fiyat</th></tr>${rows}</table><h2>Toplam: ${escapeHtml(formatCurrency(invoice.amount))}</h2><button onclick="window.print()">Yazdır</button></body></html>`);
+    popup.document.write(`<html><head><meta charset="utf-8"><title>${escapeHtml(invoice.id)}</title><style>body{font-family:Arial;padding:40px}h1{border-bottom:3px solid #d60000}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:10px;text-align:left}</style></head><body><h1>MEKA Moto Garage · Fatura/Teklif</h1><p><b>No:</b> ${escapeHtml(invoice.id)}<br><b>Müşteri:</b> ${escapeHtml(invoice.customer)}<br><b>Tarih:</b> ${escapeHtml(invoice.date)}</p><table><tr><th>Kalem</th><th>Adet</th><th>Birim fiyat</th></tr>${rows}</table><h2>Toplam: ${escapeHtml(formatCurrency(invoice.amount))}</h2><button type="button">Yazdır</button></body></html>`);
     popup.document.close();
+    // Wired up from here rather than with an inline onclick, which the site's content security policy blocks.
+    popup.document.querySelector("button").addEventListener("click", () => popup.print());
   };
 
   const deleteInvoice = async (invoiceId) => {
@@ -178,7 +180,7 @@ export function InvoicesSection() {
         </label>
         <div className="segmented-control" aria-label="Fatura durumu">
           <button className={statusFilter === "all" ? "active" : ""} type="button" onClick={() => setStatusFilter("all")}>Tümü</button>
-          <button className={statusFilter === "Bekliyor" ? "active" : ""} type="button" onClick={() => setStatusFilter("Bekliyor")}>Bekleyen</button>
+          <button className={statusFilter === "unpaid" ? "active" : ""} type="button" onClick={() => setStatusFilter("unpaid")}>Bekleyen</button>
           <button className={statusFilter === "Ödendi" ? "active" : ""} type="button" onClick={() => setStatusFilter("Ödendi")}>Ödendi</button>
         </div>
         <button className="primary-btn compact" type="button" onClick={resetForm}>

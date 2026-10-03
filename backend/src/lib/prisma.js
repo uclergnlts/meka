@@ -4,7 +4,7 @@ import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
 const databaseUrl = process.env.DATABASE_URL ?? "mysql://meka:meka@127.0.0.1:3306/meka";
 if (!databaseUrl.startsWith("mysql://")) {
-  throw new Error("DATABASE_URL MySQL bağlantısı olmalıdır (mysql://). backend/README.md dosyasını kontrol edin.");
+  throw new Error("DATABASE_URL mysql:// ile başlayan bir MySQL bağlantısı olmalıdır.");
 }
 
 // After a MySQL 8 restart the first non-TLS login needs the server's RSA key. Fetching it is

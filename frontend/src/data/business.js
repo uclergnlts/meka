@@ -49,10 +49,10 @@ function applySettings(settings) {
   window.dispatchEvent(new CustomEvent(BUSINESS_SETTINGS_EVENT, { detail: business }));
 }
 
-// Called with the public settings response. When nothing has been saved on the server yet,
-// settings from an older browser-only version stay in place so they can be saved from the panel.
+// Called with the public settings response; the server is the source of truth, so a reset
+// there (null) clears this browser's copy as well.
 export function applyServerBusinessSettings(settings) {
-  if (settings) applySettings(settings);
+  applySettings(settings ?? null);
 }
 
 export async function saveBusinessSettings(settings) {

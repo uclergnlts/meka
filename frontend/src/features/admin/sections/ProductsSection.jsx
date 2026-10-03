@@ -111,7 +111,7 @@ export function ProductsSection() {
 
   const deleteProduct = async (productId) => {
     const product = productList.find((item) => item.id === productId);
-    if (!window.confirm(`“${product?.name ?? productId}” ürününü silmek istediğinizden emin misiniz?`)) return;
+    if (!window.confirm(`“${product?.name ?? productId}” ürünü stok geçmişiyle birlikte silinecek. Devam edilsin mi?`)) return;
     setActionError(null);
 
     try {
@@ -166,7 +166,7 @@ export function ProductsSection() {
           </label>
           <label>
             Fiyat
-            <input type="number" min="0" value={form.price} onChange={(event) => updateField("price", event.target.value)} required />
+            <input type="number" min="0" step="0.01" value={form.price} onChange={(event) => updateField("price", event.target.value)} required />
           </label>
           <label>
             Stok

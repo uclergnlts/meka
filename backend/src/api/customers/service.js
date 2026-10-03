@@ -35,10 +35,12 @@ export const customerService = {
   async createCustomer(payload) {
     validateCustomerPayload(payload);
 
+    const customer = normalizeCustomerPayload(payload);
+
     return customerRepository.create({
       id: createCustomerId(),
-      date: payload.date || "Bugün",
-      ...normalizeCustomerPayload(payload),
+      ...customer,
+      date: customer.date || "Bugün",
     });
   },
 

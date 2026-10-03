@@ -57,6 +57,7 @@ function recordAddressFailure(address) {
   addressFailures.set(address, entry);
 }
 const tooManyAttempts = (res) => res.status(429).json({ message: "Çok fazla deneme yapıldı. 15 dakika sonra tekrar deneyin." });
+const standInHash = await hashPassword(randomBytes(16).toString("hex"));
 export const authRouter = Router();
 authRouter.post("/login", async (req, res, next) => {
   try {
@@ -65,7 +66,10 @@ authRouter.post("/login", async (req, res, next) => {
     if (addressBlocked(req.ip)) return tooManyAttempts(res);
     const admin = await prisma.admin.findUnique({ where: { username } });
     if (admin?.lockedUntil > new Date()) return tooManyAttempts(res);
-    if (!admin || !await verifyPassword(password, admin.passwordHash)) {
+    // An unknown username is checked against a stand-in hash, so the response takes the same time
+    // either way and usernames cannot be guessed from timing.
+    const valid = await verifyPassword(password, admin?.passwordHash ?? standInHash);
+    if (!admin || !valid) {
       recordAddressFailure(req.ip);
       if (admin) {
         const updated = await prisma.admin.update({ where: { username }, data: { failures: { increment: 1 } } });

@@ -1,33 +1,19 @@
+import { isObject, isText, requiredFieldErrors, textFieldErrors, validationError } from "../../utils/validation.js";
+
 const requiredFields = ["name", "phone", "motorcycle", "lastAction", "status"];
+const textFields = ["name", "phone", "motorcycle", "lastAction", "date", "status", "nextMaintenance", "notes"];
 
 export function validateCustomerPayload(payload, { partial = false } = {}) {
-  const errors = [];
+  if (!isObject(payload)) throw validationError("Müşteri bilgileri geçersiz.", ["Geçerli bir JSON nesnesi gönderilmelidir."]);
 
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    const error = new Error("Müşteri bilgileri geçersiz.");
-    error.statusCode = 400;
-    error.code = "VALIDATION_ERROR";
-    error.details = ["Geçerli bir JSON nesnesi gönderilmelidir."];
-    throw error;
-  }
+  const errors = [
+    ...requiredFieldErrors(payload, requiredFields, partial),
+    ...textFieldErrors(payload, textFields, { nullable: ["nextMaintenance", "notes"] }),
+  ];
 
-  if (!partial) {
-    requiredFields.forEach((field) => {
-      if (payload[field] === undefined || String(payload[field]).trim() === "") {
-        errors.push(`${field} alanı zorunlu.`);
-      }
-    });
-  }
-
-  if (payload.phone !== undefined && String(payload.phone).replace(/\D/g, "").length < 10) {
+  if (isText(payload.phone) && payload.phone.replace(/\D/g, "").length < 10) {
     errors.push("phone alanı geçerli bir telefon olmalı.");
   }
 
-  if (errors.length > 0) {
-    const error = new Error("Müşteri bilgileri geçersiz.");
-    error.statusCode = 400;
-    error.code = "VALIDATION_ERROR";
-    error.details = errors;
-    throw error;
-  }
+  if (errors.length > 0) throw validationError("Müşteri bilgileri geçersiz.", errors);
 }

@@ -26,10 +26,10 @@ function applyBrandAssets(assets) {
   window.dispatchEvent(new CustomEvent(BRAND_ASSETS_EVENT, { detail: assets }));
 }
 
-// Called with the public settings response. When nothing has been saved on the server yet,
-// images from an older browser-only version stay in place so they can be saved from the panel.
+// Called with the public settings response; the server is the source of truth, so a reset
+// there clears this browser's copy as well.
 export function applyServerBrandAssets(assets) {
-  if (assets && Object.keys(assets).length > 0) applyBrandAssets(assets);
+  applyBrandAssets(assets ?? {});
 }
 
 // Each image goes in its own request so two 1 MB files stay under the API's body limit.
