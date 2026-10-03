@@ -5126,3 +5126,9 @@ td:first-child {
 .panel-dark .admin-tabs button:hover {
   background: #2a2d33;
 }
+
+/* The logo is made for the dark header, so its preview in the panel sits on the same dark ground. */
+.logo-preview-admin {
+  border-color: transparent;
+  background: #0b0c0e;
+}
