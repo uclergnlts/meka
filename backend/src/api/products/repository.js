@@ -60,9 +60,11 @@ export const productRepository = {
     });
   },
 
+  // The stock history belongs to the product; once the product goes, the history goes with it.
   delete(id) {
-    return prisma.product.delete({
-      where: { id },
-    });
+    return prisma.$transaction([
+      prisma.stockMovement.deleteMany({ where: { productId: id } }),
+      prisma.product.delete({ where: { id } }),
+    ]);
   },
 };

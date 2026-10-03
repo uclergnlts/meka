@@ -17,8 +17,8 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
-    "@prisma/adapter-mariadb": "7.9.0",
-    "@prisma/client": "^7.9.0",
+    "@prisma/adapter-mariadb": "7.10.0",
+    "@prisma/client": "7.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -27,6 +27,6 @@
     "sharp": "^0.35.4"
   },
   "devDependencies": {
-    "prisma": "^7.9.0"
+    "prisma": "7.10.0"
   }
 }

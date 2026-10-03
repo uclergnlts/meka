@@ -1,7 +1,7 @@
 import { invoiceToForm, invoiceTotal } from "../../frontend/src/utils/invoices.js";
 import sharp from "sharp";
 import { randomUUID } from "node:crypto";
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
@@ -15,6 +15,12 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
   // Uploads go to a throwaway directory so the run never touches real product photos.
   const uploadDir = await mkdtemp(path.join(tmpdir(), "meka-test-uploads-"));
   process.env.UPLOAD_DIR = uploadDir;
+  // A stand-in for the built site, to check that the backend serves it next to the API.
+  const frontendDir = await mkdtemp(path.join(tmpdir(), "meka-test-frontend-"));
+  await mkdir(path.join(frontendDir, "assets"));
+  await writeFile(path.join(frontendDir, "index.html"), "<!doctype html><title>MEKA test</title>");
+  await writeFile(path.join(frontendDir, "assets", "app.js"), "console.log('meka');");
+  process.env.FRONTEND_DIR = frontendDir;
   const { prisma } = await import("../src/lib/prisma.js");
   const { createApp } = await import("../src/app.js");
   const server = createApp().listen(0, "127.0.0.1");
@@ -42,6 +48,25 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
     return result.data;
   };
   try {
+    // The site is served by the same process: pages fall back to index.html, files and the API do not.
+    for (const page of ["/", "/urunler", "/kvkk-aydinlatma-metni"]) {
+      const response = await fetch(`${origin}${page}`);
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get("content-type"), /text\/html/);
+      assert.equal(response.headers.get("cache-control"), "no-cache");
+      assert.match(await response.text(), /MEKA test/);
+    }
+    const asset = await fetch(`${origin}/assets/app.js`);
+    assert.equal(asset.status, 200);
+    assert.match(asset.headers.get("cache-control"), /immutable/);
+    assert.equal((await fetch(`${origin}/assets/missing.js`)).status, 404);
+    await request("/yok-boyle-bir-adres", "GET", undefined, 404);
+    // Another site may not call the API; the site's own address may, without being listed.
+    const withOrigin = (value) => fetch(`${origin}/api/public/products`, { headers: { Origin: value } });
+    assert.equal((await withOrigin("https://baska-site.example")).status, 403);
+    assert.equal((await withOrigin(origin)).status, 200);
+    assert.equal((await withOrigin("http://localhost:3000")).status, 200);
+
     const image = `data:image/png;base64,${(await sharp({ create: { width: 20, height: 20, channels: 3, background: "red" } }).png().toBuffer()).toString("base64")}`;
     const product = await request("/products", "POST", {
       name: "İğdır Çelik 🏍️", category: "Yedek parça", brand: "Test",
@@ -191,7 +216,15 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
     await request(`/stock/movements/${move.id}/reverse`, "POST");
     await request(`/stock/movements/${move.id}/reverse`, "POST", undefined, 409);
     assert.equal((await request(`/products/${product.id}`)).stock, 8);
-    await prisma.stockMovement.deleteMany({ where: { productId: product.id } });
+    // Bad field types and empty required fields are rejected instead of being coerced or stored.
+    await request(`/products/${product.id}`, "PUT", { stock: null }, 400);
+    await request(`/products/${product.id}`, "PUT", { stock: "" }, 400);
+    await request(`/products/${product.id}`, "PUT", { name: 123 }, 400);
+    await request(`/products/${product.id}`, "PUT", { name: "" }, 400);
+    await request(`/products/${product.id}`, "PUT", { price: 1e13 }, 400);
+    await request(`/customers/${customer.id}`, "PUT", { phone: 5550000000 }, 400);
+    await request(`/invoices/${invoice.id}`, "PUT", { customer: null }, 400);
+    assert.equal((await request(`/products/${product.id}`)).stock, 8);
     const noCsrf = await fetch(`${origin}/api/products/${product.id}`, { method: "DELETE", headers: { Cookie: cookie } });
     assert.equal(noCsrf.status, 403);
     while (created.length) {
@@ -200,6 +233,8 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
       created.pop();
     }
     await request(`/products/${product.id}`, "GET", undefined, 404);
+    // Deleting the product removed its stock history as well.
+    assert.equal(await prisma.stockMovement.count({ where: { productId: product.id } }), 0);
     assert.equal((await fetch(`${origin}${replaced.image}`)).status, 404);
     assert.deepEqual(await readdir(uploadDir), []);
     // Changing the password keeps this session, signs the others out and retires the old password.
@@ -225,6 +260,7 @@ test("MySQL: API CRUD, Unicode, long images, JSON and all resource reads", { ski
     await prisma.setting.deleteMany();
     if (originalSettings.length) await prisma.setting.createMany({ data: originalSettings });
     await rm(uploadDir, { recursive: true, force: true });
+    await rm(frontendDir, { recursive: true, force: true });
     await prisma.admin.delete({ where: { username } });
     await prisma.$disconnect();
   }

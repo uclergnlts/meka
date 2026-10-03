@@ -67,8 +67,8 @@ site alt alanlarında bulunmalıdır; farklı siteler SameSite=Strict ile destek
 - Yazma istekleri `X-Meka-Request: 1` başlığını gerektirir; frontend bunu gönderir.
 - Ürün, müşteri, fatura, servis ve stok hareketleri MySQL'dedir. Stok değişikliği
   ile geçmiş aynı transaction içindedir. Negatif stok ve çift geri alma engellenir.
-  Ürün kartından stok değiştirmek de aradaki fark kadar bir hareket kaydeder; stok
-  geçmişi olan ürün silinemez.
+  Ürün kartından stok değiştirmek de aradaki fark kadar bir hareket kaydeder. Ürün
+  silinince stok geçmişi de onunla birlikte silinir.
 - Paneldeki işletme ayarları ve logo `settings` tablosunda saklanır ve tüm
   ziyaretçilere yansır; tarayıcıdaki kopya yalnızca önbellektir. Logo ve favicon PNG
   olarak `UPLOAD_DIR` içine yazılır. Bu tablo eklenmeden önce kurulmuş bir
@@ -115,21 +115,30 @@ aktarın, arşivi `UPLOAD_DIR` konumuna açın ve bağlantıyı bu veritabanına
 veritabanına geri yüklenip `node backend/scripts/verify-migration.js` ile
 karşılaştırılmıştır; bu komut yerel sabit `meka_before_verify`/`meka` adlarını kullanır.
 
-## Hosting için kalan adımlar
+## Hosting'e kurulum
 
-1. Node.js 22.12+ ve MySQL 8+ ile npm/terminal erişimini sağlayıcıdan doğrulayın.
-2. Boş MySQL veritabanı ve kullanıcı oluşturun. `DATABASE_URL` değerini
-   `mysql://DB_USER:URL_ENCODED_PASSWORD@DB_HOST:3306/DB_NAME` biçiminde tanımlayın.
-   Yerel (127.0.0.1/localhost) bağlantıda MySQL 8'in RSA anahtarı otomatik alınır.
-   Uzak sunucuda bağlantı TLS'siz ise ve `ER_CANNOT_RETRIEVE_RSA_KEY` hatası çıkarsa
-   TLS açın veya URL'ye `?allowPublicKeyRetrieval=true` ekleyin.
-3. `NODE_ENV=production`, `FRONTEND_ORIGIN`, `PORT`, kalıcı `UPLOAD_DIR` ve vekil
-   arkasındaysa `TRUST_PROXY` ayarlayın. Panel için `admin.<alan adı>` DNS kaydını aynı
-   siteye yönlendirin ve `FRONTEND_ORIGIN` içine iki adresi de virgülle yazın
-   (ör. `https://ornek.com,https://admin.ornek.com`).
-4. Yerel son SQL yedeğini ve uploads arşivini aktarın; üretim frontend derlemesini
-   hazırlayın. `VITE_API_BASE_URL` yalnızca API farklı origin'deyse gerekir.
-5. HTTPS, cookie, public ürünler, yönetici girişi ve kayıt işlemlerini doğrulayın.
+Canlıda site, panel ve API tek bir Node.js uygulaması olarak çalışır: backend,
+`public` klasöründe derlenmiş siteyi bulursa onu da sunar ve `/urunler` gibi sayfa
+adreslerinde `index.html` döndürür. Site kendi adresinden geldiği için
+`FRONTEND_ORIGIN` ayarı gerekmez.
+
+```bash
+npm run db:backup       # kayıtlar ve fotoğraflar: backend/backups/<tarih>/
+npm run build:hosting   # yüklenecek paket: dist-hosting/meka-hosting.zip
+```
+
+Paket; backend'i, derlenmiş siteyi, hazır üretilmiş veritabanı istemcisini ve kendi
+`package.json` dosyasını içerir. Kurulum adımları pakette ve
+[hosting/KURULUM.md](../hosting/KURULUM.md) içindedir. Paylaşımlı hosting'de (cPanel
+veya DirectAdmin, CloudLinux "Setup Node.js App") çalışacak şekilde hazırlanmıştır.
+
+Gerekenler: Node.js 20.19+ (tercihen 22) ve MySQL 8 ya da MariaDB 10.6+. Paket
+Node.js 20.19 ve MariaDB 10.6 ile, MySQL 8.4 yedeği MariaDB'ye aktarılarak denenmiştir.
+
+Uzak bir veritabanı sunucusunda bağlantı TLS'siz ise ve `ER_CANNOT_RETRIEVE_RSA_KEY`
+hatası çıkarsa TLS açın veya URL'ye `?allowPublicKeyRetrieval=true` ekleyin.
+`VITE_API_BASE_URL` ve `FRONTEND_ORIGIN` yalnızca site ile API ayrı adreslerde
+barındırılırsa gerekir.
 
 Hosting bağlantısı, DNS ve yayın yapılmadı. Yerel geçiş için gerekli şema dönüşümü
 bu oturumda kullanıcı talimatıyla uygulanmıştır; `prisma/mysql-review-upgrade.sql`

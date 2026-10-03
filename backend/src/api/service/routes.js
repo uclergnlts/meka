@@ -24,7 +24,7 @@ function serviceData(body, partial = false) {
   }
   for (const key of ["mileage", "labor"]) if (body[key] !== undefined) {
     const n = body[key] === "" || body[key] === null ? null : Number(body[key]);
-    if (n !== null && (!Number.isFinite(n) || n < 0 || (key === "mileage" && (!Number.isInteger(n) || n > 2147483647)))) fail();
+    if (n !== null && (!Number.isFinite(n) || n < 0 || (key === "mileage" && (!Number.isInteger(n) || n > 2147483647)) || (key === "labor" && n > 9999999999.99))) fail();
     data[key] = n;
   }
   return data;

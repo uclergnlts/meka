@@ -1,41 +1,23 @@
+import { MAX_INT, MAX_MONEY, isNumeric, isObject, requiredFieldErrors, textFieldErrors, validationError } from "../../utils/validation.js";
+
 const requiredFields = ["name", "category", "brand", "price", "stock", "minStock"];
+const textFields = ["name", "category", "brand", "tag", "image", "compatibility"];
 
 export function validateProductPayload(payload, { partial = false } = {}) {
-  const errors = [];
+  if (!isObject(payload)) throw validationError("Ürün bilgileri geçersiz.", ["Geçerli bir JSON nesnesi gönderilmelidir."]);
 
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    const error = new Error("Ürün bilgileri geçersiz.");
-    error.statusCode = 400;
-    error.code = "VALIDATION_ERROR";
-    error.details = ["Geçerli bir JSON nesnesi gönderilmelidir."];
-    throw error;
-  }
-
-  if (!partial) {
-    requiredFields.forEach((field) => {
-      if (payload[field] === undefined || String(payload[field]).trim() === "") {
-        errors.push(`${field} alanı zorunlu.`);
-      }
-    });
-  }
+  const errors = [...requiredFieldErrors(payload, requiredFields, partial), ...textFieldErrors(payload, textFields)];
 
   ["price", "stock", "minStock"].forEach((field) => {
-    if (payload[field] !== undefined && (!Number.isFinite(Number(payload[field])) || Number(payload[field]) < 0)) {
+    if (payload[field] === undefined) return;
+    if (!isNumeric(payload[field]) || Number(payload[field]) < 0) {
       errors.push(`${field} alanı sıfır veya daha büyük sayı olmalı.`);
+    } else if (field === "price" && Number(payload[field]) > MAX_MONEY) {
+      errors.push("price alanı çok büyük.");
+    } else if (field !== "price" && (!Number.isInteger(Number(payload[field])) || Number(payload[field]) > MAX_INT)) {
+      errors.push(`${field} alanı ${MAX_INT} değerini aşmayan bir tam sayı olmalı.`);
     }
   });
 
-  ["stock", "minStock"].forEach((field) => {
-    if (payload[field] !== undefined && !Number.isInteger(Number(payload[field]))) {
-      errors.push(`${field} alanı tam sayı olmalı.`);
-    }
-  });
-
-  if (errors.length > 0) {
-    const error = new Error("Ürün bilgileri geçersiz.");
-    error.statusCode = 400;
-    error.code = "VALIDATION_ERROR";
-    error.details = errors;
-    throw error;
-  }
+  if (errors.length > 0) throw validationError("Ürün bilgileri geçersiz.", errors);
 }

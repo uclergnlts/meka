@@ -4,8 +4,12 @@ import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 
 export default [
-  { ignores: ["**/dist/", "**/node_modules/", ".next/", ".vinext/"] },
+  { ignores: ["**/dist/", "dist-hosting/", "**/node_modules/", ".next/", ".vinext/"] },
   js.configs.recommended,
+  {
+    files: ["hosting/**/*.cjs"],
+    languageOptions: { sourceType: "commonjs", globals: globals.node },
+  },
   {
     files: ["backend/**/*.js", "scripts/**/*.mjs", "*.js"],
     languageOptions: { globals: globals.node },

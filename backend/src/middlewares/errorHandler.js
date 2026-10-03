@@ -23,6 +23,8 @@ export function errorHandler(error, req, res, next) {
     return;
   }
 
+  if (error.type === "entity.too.large") return res.status(413).json({ error: "PAYLOAD_TOO_LARGE", message: "Gönderilen veri çok büyük (en fazla 2 MB)." });
+  if (error.status === 404 && req.path.startsWith("/uploads/")) return res.status(404).json({ error: "NOT_FOUND", message: "Dosya bulunamadı." });
   if (error.code === "P2003") return res.status(409).json({ error: "RECORD_IN_USE", message: "Stok geçmişi bulunan ürün silinemez." });
   if (error.code === "P2025") return res.status(404).json({ error: "NOT_FOUND", message: "Kayıt bulunamadı." });
   if (error.code === "P2002") {

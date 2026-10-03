@@ -1,48 +1,27 @@
+import { MAX_MONEY, isNumeric, isObject, requiredFieldErrors, textFieldErrors, validationError } from "../../utils/validation.js";
+
 const requiredFields = ["customer", "description", "amount", "status", "date"];
+const textFields = ["customer", "description", "status", "date"];
 
 export function validateInvoicePayload(payload, { partial = false } = {}) {
-  const errors = [];
+  if (!isObject(payload)) throw validationError("Fatura bilgileri geçersiz.", ["Geçerli bir JSON nesnesi gönderilmelidir."]);
 
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    const error = new Error("Fatura bilgileri geçersiz.");
-    error.statusCode = 400;
-    error.code = "VALIDATION_ERROR";
-    error.details = ["Geçerli bir JSON nesnesi gönderilmelidir."];
-    throw error;
-  }
+  const errors = [...requiredFieldErrors(payload, requiredFields, partial), ...textFieldErrors(payload, textFields)];
 
-  if (!partial) {
-    requiredFields.forEach((field) => {
-      if (payload[field] === undefined || String(payload[field]).trim() === "") {
-        errors.push(`${field} alanı zorunlu.`);
-      }
-    });
-  }
-
-  if (payload.amount !== undefined && (!Number.isFinite(Number(payload.amount)) || Number(payload.amount) < 0)) {
-    errors.push("amount alanı sıfır veya daha büyük sayı olmalı.");
-  }
-
-  if (payload.discount !== undefined && (!Number.isFinite(Number(payload.discount)) || Number(payload.discount) < 0)) {
-    errors.push("discount alanı sıfır veya daha büyük sayı olmalı.");
-  }
-
-  if (payload.taxRate !== undefined && (!Number.isFinite(Number(payload.taxRate)) || Number(payload.taxRate) < 0 || Number(payload.taxRate) > 100)) {
-    errors.push("taxRate alanı 0 ile 100 arasında olmalı.");
-  }
+  ["amount", "discount", "taxRate"].forEach((field) => {
+    if (payload[field] === undefined) return;
+    if (!isNumeric(payload[field]) || Number(payload[field]) < 0) {
+      errors.push(`${field} alanı sıfır veya daha büyük sayı olmalı.`);
+    } else if (field === "taxRate" && Number(payload[field]) > 100) {
+      errors.push("taxRate alanı 0 ile 100 arasında olmalı.");
+    } else if (!/^\d+(\.\d{1,2})?$/.test(String(payload[field])) || Number(payload[field]) > MAX_MONEY) {
+      errors.push(`${field} en fazla iki ondalık basamak içermeli.`);
+    }
+  });
 
   if (payload.items !== undefined && !Array.isArray(payload.items)) {
     errors.push("items alanı bir liste olmalı.");
   }
 
-  for (const key of ["amount", "discount", "taxRate"]) {
-    if (payload[key] !== undefined && (!/^\d+(\.\d{1,2})?$/.test(String(payload[key])) || Number(payload[key]) > 9999999999.99)) errors.push(`${key} en fazla iki ondalık basamak içermeli.`);
-  }
-  if (errors.length > 0) {
-    const error = new Error("Fatura bilgileri geçersiz.");
-    error.statusCode = 400;
-    error.code = "VALIDATION_ERROR";
-    error.details = errors;
-    throw error;
-  }
+  if (errors.length > 0) throw validationError("Fatura bilgileri geçersiz.", errors);
 }

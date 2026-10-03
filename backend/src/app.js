@@ -5,6 +5,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import path from "node:path";
 import { env } from "./config/env.js";
 import { settingsController } from "./api/settings/index.js";
 import { apiRouter } from "./routes/index.js";
@@ -16,22 +17,30 @@ export function createApp() {
 
   app.disable("x-powered-by");
   if (env.trustProxy) app.set("trust proxy", env.trustProxy);
-  app.use(helmet());
-  app.use(cors({
-    credentials: true,
-    origin(origin, callback) {
-      if (!origin || env.frontendOrigins.includes(origin)) return callback(null, true);
-      const error = new Error("Bu kaynaktan gelen isteğe izin verilmiyor.");
-      error.statusCode = 403;
-      error.code = "CORS_ORIGIN_DENIED";
-      return callback(error);
-    },
+  // Browsers are told to upgrade http to https only in production; a local run over plain http would break otherwise.
+  app.use(helmet({ contentSecurityPolicy: { directives: { "upgrade-insecure-requests": env.production ? [] : null } } }));
+  // Requests from the address the site itself is served on are always allowed; FRONTEND_ORIGIN
+  // lists any other address the frontend runs on.
+  app.use(cors((req, callback) => {
+    const origin = req.get("Origin");
+    const ownAddress = origin && URL.canParse(origin) && new URL(origin).host === req.get("Host");
+    if (!origin || ownAddress || env.frontendOrigins.includes(origin)) return callback(null, { credentials: true, origin: true });
+    const error = new Error("Bu kaynaktan gelen isteğe izin verilmiyor.");
+    error.statusCode = 403;
+    error.code = "CORS_ORIGIN_DENIED";
+    return callback(error);
   }));
   app.use(express.json({ limit: "2mb" }));
   app.use(morgan("dev"));
 
-  app.get("/health", (req, res) => {
-    res.json({ status: "ok", service: "meka-backend" });
+  app.get("/health", async (req, res) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      res.json({ status: "ok", service: "meka-backend" });
+    } catch (error) {
+      console.error(error);
+      res.status(503).json({ status: "error", service: "meka-backend", message: "Veritabanına bağlanılamadı." });
+    }
   });
 
   // Product photos and the logo are public; helmet's same-origin default would block them when the storefront is on another origin.
@@ -44,6 +53,20 @@ export function createApp() {
   app.use("/api", requireRequestHeader);
   app.use("/api/auth", authRouter);
   app.use("/api", requireAdmin, apiRouter);
+  if (env.frontendDir) {
+    // Built assets carry a content hash in their name and can be cached for good; the page itself must stay fresh.
+    app.use(express.static(env.frontendDir, {
+      index: false,
+      setHeaders(res, filePath) {
+        if (filePath.includes(`${path.sep}assets${path.sep}`)) res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      },
+    }));
+    // Client-side routes such as /urunler have no file of their own; they all load the same page.
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api/") || req.path.startsWith("/uploads/") || path.extname(req.path)) return next();
+      res.set("Cache-Control", "no-cache").sendFile(path.join(env.frontendDir, "index.html"));
+    });
+  }
   app.use(notFoundHandler);
   app.use(errorHandler);
 
