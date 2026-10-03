@@ -20,10 +20,17 @@ if (!Number.isInteger(trustProxy) || trustProxy < 0) {
 const bundledFrontend = fileURLToPath(new URL("../../public/", import.meta.url));
 const frontendDir = process.env.FRONTEND_DIR ? path.resolve(process.env.FRONTEND_DIR) : (existsSync(path.join(bundledFrontend, "index.html")) ? bundledFrontend : null);
 
+// On shared hosting the app folder sits next to the web server's document root. Certificate
+// issuers (Let's Encrypt) drop their challenge files under <document root>/.well-known, and the
+// web server hands every request to the app, so the app has to serve those files itself.
+const siblingWebRoot = fileURLToPath(new URL("../../../public_html/", import.meta.url));
+const webRoot = process.env.WEB_ROOT ? path.resolve(process.env.WEB_ROOT) : (existsSync(siblingWebRoot) ? siblingWebRoot : null);
+
 export const env = {
   port: parsedPort,
   trustProxy,
   frontendDir,
+  webRoot,
   production: process.env.NODE_ENV === "production",
   // Only needed when the frontend is served from another address than the API (as in development).
   frontendOrigins: (process.env.FRONTEND_ORIGIN ?? (process.env.NODE_ENV === "production" ? "" : "http://localhost:3000,http://admin.localhost:3000"))
