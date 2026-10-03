@@ -21,6 +21,15 @@ export function stockStatus(stock, minStock) {
 
 // Local calendar date as YYYY-MM-DD; toISOString() alone would report UTC's date.
 export function todayIso() {
-  const now = new Date();
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  return localIso(new Date());
+}
+
+export function addDays(isoDate, days) {
+  const date = new Date(`${isoDate}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return localIso(date);
+}
+
+function localIso(date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }

@@ -26,15 +26,18 @@ import { categories } from "../../data/catalog.js";
 import { api, assetUrl } from "../../services/apiClient.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 
+// The owner's first name the way customers address him in messages ("{ustaAdi()}").
+const ustaAdi = () => `${business.owner.split(" ")[0]} Usta`;
+
 export function PublicSite({ page, setPage }) {
   const { data: products, error, isLoading } = useApiResource(api.publicProducts, []);
   return (
     <>
       <main>
-        {(page === "home" || page === "products") && (error || isLoading) ? <p role="status">{error ? "Ürün listesine şu anda ulaşılamıyor." : "Ürünler yükleniyor…"}</p> : null}
+        {(page === "home" || page === "products") && (error || isLoading) ? <p className="site-status" role="status">{error ? "Ürün listesine şu anda ulaşılamıyor." : "Ürünler yükleniyor…"}</p> : null}
         {page === "home" && <HomePage setPage={setPage} products={products} />}
         {page === "products" && <ProductsPage products={products} />}
-        {(page === "who" || page === "about") && <AboutPage />}
+        {page === "about" && <AboutPage />}
         {page === "contact" && <ContactPage />}
         {page === "faq" && <FaqPage />}
         {page === "kvkk" && <LegalPage type="kvkk" setPage={setPage} />}
@@ -55,7 +58,7 @@ function HomePage({ setPage, products }) {
       <section className="hero hero-pro" id="anasayfa">
         <img
           src="/meka-owner-hero-v2.webp"
-          alt="MEKA Moto Garage Simav atölyesinde Metin Kalfa"
+          alt={`MEKA Moto Garage Simav atölyesinde ${business.owner}`}
           fetchPriority="high"
         />
         <div className="hero-overlay" />
@@ -64,7 +67,7 @@ function HomePage({ setPage, products }) {
             <div className="hero-stamp-bar">
               <span className="stamp-code">MEKA // SİMAV</span>
               <span className="stamp-divider">|</span>
-              <span className="stamp-text">FATİH MAH. YENİ CAMİ CAD. NO: 21/A</span>
+              <span className="stamp-text">{business.address.toLocaleUpperCase("tr-TR")}</span>
             </div>
 
             <h1 className="hero-clean-title">
@@ -80,7 +83,7 @@ function HomePage({ setPage, products }) {
                 <Phone size={18} /> Ustayı Ara ({business.phone})
               </a>
               <a
-                href={`${business.whatsappHref}?text=${encodeURIComponent("Selamın aleyküm Metin Usta, motosikletim için danışmak istiyorum.")}`}
+                href={`${business.whatsappHref}?text=${encodeURIComponent(`Selamın aleyküm ${ustaAdi()}, motosikletim için danışmak istiyorum.`)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="hero-btn-wa"
@@ -91,7 +94,7 @@ function HomePage({ setPage, products }) {
 
             <div className="hero-clean-strip">
               <span className="hero-clean-strip-item">
-                <Wrench size={15} /> Metin Kalfa Ustalığı
+                <Wrench size={15} /> {business.owner} Ustalığı
               </span>
               <span className="hero-clean-strip-item">
                 <Clock size={15} /> Pzt – Cmt: 08:30 – 19:30
@@ -119,7 +122,7 @@ function HomePage({ setPage, products }) {
         <div className="guarantee-col">
           <span className="guarantee-tag">[ PRENSİP 03 ]</span>
           <h3>Doğrudan Ustayla Muhatapsınız</h3>
-          <p>Aracı yok; motoru dinleyen de lifte alıp anahtarı vuran da doğrudan Metin Kalfa'dır.</p>
+          <p>Aracı yok; motoru dinleyen de lifte alıp anahtarı vuran da doğrudan {business.owner}'dır.</p>
         </div>
       </section>
 
@@ -265,7 +268,7 @@ function HomePage({ setPage, products }) {
           <img src="/meka-storefront-v1.webp" alt="MEKA Moto Garage Simav Fatih Mahallesi mağazası" loading="lazy" />
           <div className="brand-photo-badge">
             <span className="status-live-dot" />
-            <span>Fatih Mah. Yeni Cami Cad. No: 21/A · Simav</span>
+            <span>{business.address} · {business.city}</span>
           </div>
         </figure>
         <div className="brand-strip-content">
@@ -283,7 +286,7 @@ function HomePage({ setPage, products }) {
               </div>
             </a>
             <a
-              href={`${business.whatsappHref}?text=${encodeURIComponent("Selamın aleyküm Metin Usta, bir parça/motor hakkında danışmak istiyordum.")}`}
+              href={`${business.whatsappHref}?text=${encodeURIComponent(`Selamın aleyküm ${ustaAdi()}, bir parça/motor hakkında danışmak istiyordum.`)}`}
               target="_blank"
               rel="noreferrer"
               className="biz-card whatsapp-highlight"
@@ -327,7 +330,7 @@ function HomePage({ setPage, products }) {
             <Phone size={18} /> Ustayı Ara: {business.phone}
           </a>
           <a
-            href={`${business.whatsappHref}?text=${encodeURIComponent("Merhaba Metin Usta, dükkana gelmeden önce bir parça sormak istiyorum.")}`}
+            href={`${business.whatsappHref}?text=${encodeURIComponent(`Merhaba ${ustaAdi()}, dükkana gelmeden önce bir parça sormak istiyorum.`)}`}
             target="_blank"
             rel="noreferrer"
             className="secondary-btn light"
@@ -392,17 +395,19 @@ function ProductsPage({ products = [] }) {
             Listede göremediğiniz parçayı WhatsApp'tan yazın veya fotoğrafını atın; Simav atölye depomuzdan veya toptancıdan hemen ayıralım.
           </p>
           <div className="workshop-status-board" style={{ marginTop: "24px" }}>
-            <div className="status-item">
-              <span className="status-label">[FOTOĞRAFLA SORGULA]</span>
-              <span className="status-val">Eski parçayı veya ruhsatı WhatsApp'a atın</span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">[ÇEVRE İLÇE &amp; KÖY]</span>
-              <span className="status-val">Hisarcık, Gediz, Emet, Pazarlar ve köylere parça</span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">[MONTAJ DESTEĞİ]</span>
-              <span className="status-val">İster raftan al, ister atölyede usta montajı</span>
+            <div className="status-board-body">
+              <div className="status-board-row">
+                <span className="status-row-label">Fotoğrafla sorgula</span>
+                <span className="status-row-value">Eski parçayı veya ruhsatı WhatsApp'a atın</span>
+              </div>
+              <div className="status-board-row">
+                <span className="status-row-label">Çevre ilçe &amp; köy</span>
+                <span className="status-row-value">Hisarcık, Gediz, Emet, Pazarlar ve köylere parça</span>
+              </div>
+              <div className="status-board-row">
+                <span className="status-row-label">Montaj desteği</span>
+                <span className="status-row-value">İster raftan al, ister atölyede usta montajı</span>
+              </div>
             </div>
           </div>
         </div>
@@ -499,12 +504,12 @@ function ProductsPage({ products = [] }) {
             <p>
               Dükkanımızdaki binlerce kalem civata, conta, tel, dişli ve parçayı tek tek siteye eklemek mümkün olmuyor.
               <br />
-              <strong>{query ? `"${query}"` : "Aradığınız parçanın"}</strong> veya motor ruhsatınızın fotoğrafını WhatsApp'tan Metin Usta'ya gönderin, rafta varsa hemen ayıralım, yoksa 24 saat içinde depodan getirtelim.
+              <strong>{query ? `"${query}"` : "Aradığınız parçanın"}</strong> veya motor ruhsatınızın fotoğrafını WhatsApp'tan {ustaAdi()}'ya gönderin, rafta varsa hemen ayıralım, yoksa 24 saat içinde depodan getirtelim.
             </p>
             <div className="empty-state-actions">
               <a
                 className="primary-btn"
-                href={`${business.whatsappHref}?text=${encodeURIComponent(`Selamın aleyküm Metin Usta, sitede ${query ? `"${query}"` : "bir parça"} baktım göremedim. Dükkanda veya depoda var mı, fotoğrafını atayım mı?`)}`}
+                href={`${business.whatsappHref}?text=${encodeURIComponent(`Selamın aleyküm {ustaAdi()}, sitede ${query ? `"${query}"` : "bir parça"} baktım göremedim. Dükkanda veya depoda var mı, fotoğrafını atayım mı?`)}`}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -538,7 +543,7 @@ function ProductsPage({ products = [] }) {
           <div className="part-request-actions">
             <a
               className="primary-btn hero-call-btn"
-              href={`${business.whatsappHref}?text=${encodeURIComponent("Selamın aleyküm Metin Usta, motorum için özel bir parça siparişi vermek/danışmak istiyorum.")}`}
+              href={`${business.whatsappHref}?text=${encodeURIComponent(`Selamın aleyküm ${ustaAdi()}, motorum için özel bir parça siparişi vermek/danışmak istiyorum.`)}`}
               target="_blank"
               rel="noreferrer"
             >
@@ -572,21 +577,21 @@ function AboutPage() {
             doğrudan ustasıyla konuşulan hesabın dükkânıyız.
           </p>
           <div style={{ marginTop: "24px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            <span className="ledger-tag">Usta: Metin Kalfa</span>
+            <span className="ledger-tag">Usta: {business.owner}</span>
             <span className="ledger-tag">Simav / Kütahya</span>
-            <span className="ledger-tag">Fatih Mah. Yeni Cami Cad. 21/A</span>
+            <span className="ledger-tag">{business.address}</span>
             <span className="ledger-tag">Ruhsat No: {business.licenseSequenceNumber ?? "43"}</span>
           </div>
         </div>
         <figure className="about-team-photo">
           <img
             src="/meka-owner-about-v2.webp"
-            alt="Metin Kalfa, MEKA Moto Garage mağaza girişinde"
+            alt={`${business.owner}, MEKA Moto Garage mağaza girişinde`}
             loading="lazy"
           />
           <figcaption>
             <strong>{business.owner}</strong>
-            <span>{business.brand} · Fatih Mah. Yeni Cami Cad. No: 21/A, Simav</span>
+            <span>{business.brand} · {business.address}, {business.city}</span>
           </figcaption>
         </figure>
       </section>
@@ -760,7 +765,7 @@ function AboutPage() {
             </p>
           </div>
           <a
-            href={`${business.whatsappHref}?text=${encodeURIComponent("Selamın aleyküm Metin Usta, köyden geliyorum / çevre ilçeden parça danışmak istiyorum.")}`}
+            href={`${business.whatsappHref}?text=${encodeURIComponent(`Selamın aleyküm ${ustaAdi()}, köyden geliyorum / çevre ilçeden parça danışmak istiyorum.`)}`}
             target="_blank"
             rel="noreferrer"
             className="secondary-btn light"
@@ -778,7 +783,7 @@ function AboutPage() {
           <h2>Bir çayımızı içmeye, motorun sesini dinletmeye bekleriz.</h2>
           <p>
             Parça almasanız bile aklınıza takılan arıza veya bakım konusunu danışmak için Simav Yeni Cami Caddesi'ndeki
-            dükkânımıza uğrayabilir veya telefonla Metin Usta'ya doğrudan ulaşabilirsiniz.
+            dükkânımıza uğrayabilir veya telefonla {ustaAdi()}'ya doğrudan ulaşabilirsiniz.
           </p>
         </div>
         <div className="home-cta-actions">
@@ -786,7 +791,7 @@ function AboutPage() {
             <Phone size={18} /> Hemen Ara ({business.phone})
           </a>
           <a
-            href={`${business.whatsappHref}?text=${encodeURIComponent("Selamın aleyküm Metin Usta, dükkanınıza uğramak istiyorum.")}`}
+            href={`${business.whatsappHref}?text=${encodeURIComponent(`Selamın aleyküm ${ustaAdi()}, dükkanınıza uğramak istiyorum.`)}`}
             target="_blank"
             rel="noreferrer"
             className="hero-btn-wa"
@@ -948,7 +953,7 @@ function SiteFooter({ setPage }) {
         </div>
         <div className="assist-strip-actions">
           <a
-            href={`${business.whatsappHref}?text=${encodeURIComponent("Selamın aleyküm Metin Usta, motosikletim için bir parça danışmak istiyorum.")}`}
+            href={`${business.whatsappHref}?text=${encodeURIComponent(`Selamın aleyküm ${ustaAdi()}, motosikletim için bir parça danışmak istiyorum.`)}`}
             target="_blank"
             rel="noreferrer"
             className="assist-wa-btn"
@@ -971,7 +976,7 @@ function SiteFooter({ setPage }) {
           </div>
           <p className="footer-brand-desc">
             Simav Yeni Cami Caddesi'nde motosiklet mekanik bakımı, arıza tespiti ve kaliteli orijinal/muadil yedek parça vitrini.
-            Metin Kalfa ustalığıyla doğrudan ustanızla muhatap olun.
+            {business.owner} ustalığıyla doğrudan ustanızla muhatap olun.
           </p>
           <div className="footer-live-badge">
             <span className="status-live-dot" />
@@ -1026,7 +1031,7 @@ function SiteFooter({ setPage }) {
               <Phone size={17} className="contact-icon" />
               <div>
                 <strong>{business.phone}</strong>
-                <small>Metin Kalfa (Hemen Ara)</small>
+                <small>{business.owner} (Hemen Ara)</small>
               </div>
             </a>
             <a href={business.whatsappHref} target="_blank" rel="noreferrer" className="footer-contact-item">
@@ -1039,8 +1044,8 @@ function SiteFooter({ setPage }) {
             <a href={business.mapsHref} target="_blank" rel="noreferrer" className="footer-contact-item">
               <MapPin size={17} className="contact-icon" />
               <div>
-                <strong>Yeni Cami Cad. No: 21/A</strong>
-                <small>Fatih Mah. Simav / Kütahya · Haritada Aç</small>
+                <strong>{business.address}</strong>
+                <small>{business.city} · Haritada Aç</small>
               </div>
             </a>
           </div>
@@ -1051,7 +1056,7 @@ function SiteFooter({ setPage }) {
       <div className="footer-bottom-bar">
         <div className="footer-bottom-left">
           <span>© {new Date().getFullYear()} {business.brand}. Tüm hakları saklıdır.</span>
-          <span className="footer-license-note">T.C. Simav Belediyesi Ruhsat No: {business.licenseSequenceNumber ?? "43"} · {business.licensedActivity}</span>
+          <span className="footer-license-note">{business.licenseAuthority} Ruhsat No: {business.licenseSequenceNumber} · {business.licensedActivity}</span>
         </div>
         <div className="footer-bottom-links">
           <button type="button" onClick={() => { setPage("kvkk"); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>KVKK Aydınlatma</button>
@@ -1078,7 +1083,7 @@ function ContactPage() {
       `Talep Türü: ${appointment.serviceType}`,
       `Arıza/İstek: ${appointment.request}`,
       "----------------------------------",
-      "Simav Atölyesi / Metin Kalfa Ustalığıyla",
+      `Simav Atölyesi / ${business.owner} Ustalığıyla`,
     ].join("\n");
     window.open(`${business.whatsappHref}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
   };
@@ -1089,7 +1094,7 @@ function ContactPage() {
         <div className="hero-stamp-bar" style={{ maxWidth: "1400px", margin: "0 auto 24px" }}>
           <span className="stamp-code">MEKA // SERVİS KABUL &amp; DANIŞMA</span>
           <span className="stamp-divider">|</span>
-          <span className="stamp-text">FATİH MAH. YENİ CAMİ CAD. NO: 21/A · SİMAV</span>
+          <span className="stamp-text">{business.address.toLocaleUpperCase("tr-TR")} · {business.city.toLocaleUpperCase("tr-TR")}</span>
         </div>
 
         <div className="contact-desk-layout">
@@ -1098,7 +1103,7 @@ function ContactPage() {
             <h1 className="contact-desk-title">Atölye İrtibat &amp; Doğrudan Usta Masası</h1>
             <p className="contact-desk-subtitle">
               Aracı sekreter, santral veya çağrı merkezi yok. Simav Yeni Cami Caddesi'ndeki atölyemizde
-              motor başında çalışan Metin Usta'ya doğrudan ulaşırsınız.
+              motor başında çalışan {ustaAdi()}'ya doğrudan ulaşırsınız.
             </p>
 
             {/* Direct Phone Billboard */}
@@ -1118,7 +1123,7 @@ function ContactPage() {
                   <Phone size={15} /> Hemen Ara ({business.phone})
                 </a>
                 <a
-                  href={`${business.whatsappHref}?text=${encodeURIComponent("Selamın aleyküm Metin Usta, motosikletim için danışmak istiyorum.")}`}
+                  href={`${business.whatsappHref}?text=${encodeURIComponent(`Selamın aleyküm ${ustaAdi()}, motosikletim için danışmak istiyorum.`)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="dialer-wa-btn"
@@ -1133,7 +1138,7 @@ function ContactPage() {
               <div className="contact-info-row">
                 <span className="row-label">[KONUM &amp; ADRES]</span>
                 <span className="row-val">
-                  <strong>Yeni Cami Cad. No: 21/A</strong> · Fatih Mah. Simav / Kütahya (Simav Merkez)
+                  <strong>{business.address}</strong> · {business.city}
                 </span>
               </div>
               <div className="contact-info-row">
@@ -1164,7 +1169,7 @@ function ContactPage() {
               <div className="contact-storefront-overlay">
                 <div>
                   <strong>MEKA Moto Garage // Simav</strong>
-                  <div style={{ fontSize: "12px", color: "#b8bcc8", marginTop: "2px" }}>Yeni Cami Cad. No: 21/A</div>
+                  <div style={{ fontSize: "12px", color: "#b8bcc8", marginTop: "2px" }}>{business.address}</div>
                 </div>
                 <a href={business.mapsHref} target="_blank" rel="noreferrer">
                   <Navigation size={14} /> Haritada Yol Tarifi Al
@@ -1177,7 +1182,7 @@ function ContactPage() {
           <div className="work-order-ticket">
             <div className="ticket-header">
               <span className="ticket-header-title">// ATÖLYE İŞ EMRİ &amp; DANIŞMA FİŞİ</span>
-              <span className="stamp-code">MEKA-SİMAV-43</span>
+              <span className="stamp-code">MEKA-SİMAV-{business.licenseSequenceNumber}</span>
             </div>
             <form className="ticket-body" onSubmit={sendAppointment}>
               <div className="ticket-field">
@@ -1309,7 +1314,7 @@ function ProductGrid({ limit, items = [] }) {
             <div className="product-contact-row">
               <a
                 className="product-wa-btn"
-                href={`${business.whatsappHref}?text=${encodeURIComponent(`Selamın aleyküm Metin Usta, ${product.name} hakkında stok durumu ve fiyat öğrenmek istiyorum.`)}`}
+                href={`${business.whatsappHref}?text=${encodeURIComponent(`Selamın aleyküm ${ustaAdi()}, ${product.name} hakkında stok durumu ve fiyat öğrenmek istiyorum.`)}`}
                 target="_blank"
                 rel="noreferrer"
               >

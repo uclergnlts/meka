@@ -87,7 +87,7 @@ export function StockSection() {
   const downloadCriticalCsv = () => {
     const critical = stockCards.filter((product) => product.stock <= product.minStock);
     const rows = [["Ürün", "Kategori", "Mevcut", "Minimum", "Durum"], ...critical.map((product) => [product.name, product.category, product.stock, product.minStock, product.status])];
-    const csv = `\uFEFF${rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(";")).join("\n")}`;
+    const csv = `\uFEFF${rows.map((row) => row.map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`).join(";")).join("\n")}`;
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a"); link.href = url; link.download = "meka-kritik-stok.csv"; link.click(); URL.revokeObjectURL(url);
   };
@@ -142,8 +142,8 @@ export function StockSection() {
             <input value={movementForm.note} onChange={(event) => updateMovementField("note", event.target.value)} placeholder="Tedarik, servis, satış..." />
           </label>
           <label>Tedarikçi<input value={movementForm.supplier} onChange={(event) => updateMovementField("supplier", event.target.value)} /></label>
-          <label>Alış fiyatı<input type="number" min="0" value={movementForm.purchasePrice} onChange={(event) => updateMovementField("purchasePrice", event.target.value)} /></label>
-          <label>Satış fiyatı<input type="number" min="0" value={movementForm.salePrice} onChange={(event) => updateMovementField("salePrice", event.target.value)} /></label>
+          <label>Alış fiyatı<input type="number" min="0" step="0.01" value={movementForm.purchasePrice} onChange={(event) => updateMovementField("purchasePrice", event.target.value)} /></label>
+          <label>Satış fiyatı<input type="number" min="0" step="0.01" value={movementForm.salePrice} onChange={(event) => updateMovementField("salePrice", event.target.value)} /></label>
           <label>Raf konumu<input value={movementForm.shelf} onChange={(event) => updateMovementField("shelf", event.target.value)} /></label>
           <label>Barkod<input value={movementForm.barcode} onChange={(event) => updateMovementField("barcode", event.target.value)} /></label>
         </div>
